@@ -2,14 +2,22 @@
   <view class="landing-page">
     <NavBar />
 
+    <!-- 剩余次数提示条 -->
+    <view class="quota-hint-bar" @tap="goToProfile">
+      <text class="quota-hint-icon">🎒</text>
+      <text class="quota-hint-text">
+        今日剩余 <text class="quota-hint-num" :class="{ 'is-zero': !quotaStore.canPlan }">{{ quotaStore.totalRemaining }}</text> 次规划
+      </text>
+      <text class="quota-hint-arrow">获取更多 ›</text>
+    </view>
+
     <!-- Hero 区域 -->
     <view class="hero-section">
-      <view class="hero-glow" />
       <view class="hero-content">
-        <text class="hero-star">✦</text>
-        <text class="hero-title">旅途星辰</text>
-        <text class="hero-subtitle">TripStar · AI 旅行引擎</text>
-        <text class="hero-desc">告诉我你的目的地，AI 将为你规划完美行程</text>
+        <text class="hero-emoji">🎒</text>
+        <text class="hero-title">出门啦</text>
+        <text class="hero-subtitle">AI 帮你规划，说走就走！</text>
+        <text class="hero-desc">输入目的地，开启你的专属智能行程规划</text>
       </view>
     </view>
 
@@ -19,7 +27,7 @@
       <view class="form-step">
         <view class="step-header">
           <view class="step-number"><text class="step-num-text">1</text></view>
-          <text class="step-title">目的地与日期</text>
+          <text class="step-title">你想去哪里？</text>
         </view>
 
         <view class="form-group">
@@ -38,7 +46,7 @@
             <picker mode="date" :value="formData.start_date" @change="onStartDateChange">
               <view class="form-input picker-input">
                 <text :class="formData.start_date ? 'picker-value' : 'input-placeholder'">
-                  {{ formData.start_date || '选择日期' }}
+                  {{ formData.start_date || '开始日期' }}
                 </text>
                 <text class="picker-icon">📅</text>
               </view>
@@ -49,7 +57,7 @@
             <picker mode="date" :value="formData.end_date" :start="formData.start_date" @change="onEndDateChange">
               <view class="form-input picker-input">
                 <text :class="formData.end_date ? 'picker-value' : 'input-placeholder'">
-                  {{ formData.end_date || '选择日期' }}
+                  {{ formData.end_date || '结束日期' }}
                 </text>
                 <text class="picker-icon">📅</text>
               </view>
@@ -58,7 +66,7 @@
         </view>
 
         <view v-if="travelDays > 0" class="days-badge">
-          <text class="days-text">共 {{ travelDays }} 天</text>
+          <text class="days-text">共 {{ travelDays }} 天行程</text>
         </view>
       </view>
 
@@ -110,7 +118,7 @@
         </view>
 
         <view class="form-group">
-          <text class="form-label">感兴趣的内容（可多选）</text>
+          <text class="form-label">感兴趣的内容（多选）</text>
           <view class="tag-grid">
             <view
               v-for="pref in preferenceOptions"
@@ -126,11 +134,11 @@
         </view>
 
         <view class="form-group">
-          <text class="form-label">特殊需求（选填）</text>
+          <text class="form-label">其他需求</text>
           <textarea
             class="form-textarea"
             v-model="formData.free_text_input"
-            placeholder="比如：带老人出行，需要无障碍设施..."
+            placeholder="比如：带老人出行，想吃地道美食..."
             placeholder-class="input-placeholder"
             :maxlength="200"
           />
@@ -140,27 +148,51 @@
       <!-- 提交按钮 -->
       <view class="submit-section">
         <button class="submit-btn" :disabled="!canSubmit" @tap="handleSubmit">
-          <text class="submit-icon">✦</text>
-          <text class="submit-text">开始AI规划</text>
+          <text class="submit-icon">🎒</text>
+          <text class="submit-text">立即生成行程</text>
         </button>
-        <text class="submit-hint">AI 将在 1~3 分钟内为你生成完整行程</text>
+        <text class="submit-hint">AI 正在为你规划最佳路线...</text>
       </view>
     </view>
 
     <!-- 加载遮罩 -->
     <LoadingOverlay :visible="tripStore.loading" :progress="tripStore.progressText" />
+
+    <!-- 次数不足弹窗 -->
+    <QuotaWall
+      :visible="showQuotaWall"
+      :ad-can-watch="quotaStore.adCanWatch"
+      @close="showQuotaWall = false"
+      @watch-ad="handleWatchAd"
+      @invite="handleInvite"
+    />
   </view>
 </template>
 
 <script setup lang="ts">
-import { reactive, computed } from 'vue'
+import { reactive, computed, ref } from 'vue'
+import { onShow } from '@dcloudio/uni-app'
 import NavBar from '@/components/NavBar.vue'
 import LoadingOverlay from '@/components/LoadingOverlay.vue'
+import QuotaWall from '@/components/QuotaWall.vue'
 import { useTripStore } from '@/stores/trip'
+import { useQuotaStore } from '@/stores/quota'
+import { useHistoryStore } from '@/stores/history'
 import { generateTripPlan } from '@/services/api'
 import type { TripFormData } from '@/types'
 
 const tripStore = useTripStore()
+const quotaStore = useQuotaStore()
+const historyStore = useHistoryStore()
+const showQuotaWall = ref(false)
+
+onShow(() => {
+  quotaStore.ensureToday()
+})
+
+function goToProfile() {
+  uni.switchTab({ url: '/pages/profile/index' })
+}
 
 const formData = reactive({
   city: '',
@@ -233,6 +265,13 @@ function onEndDateChange(e: any) {
 async function handleSubmit() {
   if (!canSubmit.value) return
 
+  // 检查次数
+  quotaStore.ensureToday()
+  if (!quotaStore.canPlan) {
+    showQuotaWall.value = true
+    return
+  }
+
   tripStore.setLoading(true)
   tripStore.setProgress('正在初始化智能体...')
 
@@ -253,9 +292,14 @@ async function handleSubmit() {
     })
 
     if (response.success && response.data) {
+      // 扣减次数
+      quotaStore.consume()
+      // 保存到历史记录
+      historyStore.add(response.data, response.graph_data)
+      // 设置当前行程
       tripStore.setTripPlan(response.data, response.graph_data)
       tripStore.setLoading(false)
-      uni.switchTab({ url: '/pages/result/index' })
+      uni.navigateTo({ url: '/pages/result/index' })
     } else {
       throw new Error(response.message || '规划失败')
     }
@@ -268,101 +312,160 @@ async function handleSubmit() {
     })
   }
 }
+
+function handleWatchAd() {
+  // #ifdef MP-WEIXIN
+  if (wx.createRewardedVideoAd) {
+    const ad = wx.createRewardedVideoAd({ adUnitId: 'adunit-placeholder' })
+    ad.onClose((res: any) => {
+      if (res && res.isEnded) {
+        quotaStore.rewardByAd()
+        showQuotaWall.value = false
+        uni.showToast({ title: '+1次规划机会', icon: 'success' })
+      }
+    })
+    ad.onError(() => uni.showToast({ title: '广告加载失败', icon: 'none' }))
+    ad.show().catch(() => ad.load().then(() => ad.show()))
+    return
+  }
+  // #endif
+  // 测试环境模拟
+  quotaStore.rewardByAd()
+  showQuotaWall.value = false
+  uni.showToast({ title: '[测试] +1次', icon: 'success' })
+}
+
+function handleInvite() {
+  showQuotaWall.value = false
+  uni.showModal({
+    title: '邀请好友',
+    content: '分享给好友，好友首次使用后你将获得 3 次规划机会！',
+    confirmText: '去分享',
+    confirmColor: '#FF6B35',
+    success: (res) => {
+      if (res.confirm) {
+        // #ifndef MP-WEIXIN
+        quotaStore.rewardByInvite()
+        uni.showToast({ title: '[测试] +3次', icon: 'success' })
+        // #endif
+      }
+    }
+  })
+}
 </script>
 
 <style scoped>
 .landing-page {
   min-height: 100vh;
-  background: linear-gradient(180deg, #0a0a0f 0%, #15132b 50%, #1a1035 100%);
+  background-color: #F5F6FA;
   padding-bottom: 60rpx;
+}
+
+/* 次数提示条 */
+.quota-hint-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12rpx;
+  padding: 20rpx 32rpx;
+  background-color: #FFF5F0;
+  border-bottom: 1rpx solid #FFE4D6;
+}
+
+.quota-hint-icon {
+  font-size: 28rpx;
+}
+
+.quota-hint-text {
+  font-size: 26rpx;
+  color: #6B7280;
+}
+
+.quota-hint-num {
+  font-weight: 700;
+  color: #FF6B35;
+  font-size: 30rpx;
+}
+
+.quota-hint-num.is-zero {
+  color: #EF4444;
+}
+
+.quota-hint-arrow {
+  font-size: 24rpx;
+  color: #FF6B35;
+  margin-left: 8rpx;
+  opacity: 0.8;
 }
 
 /* Hero */
 .hero-section {
-  position: relative;
-  padding: 80rpx 48rpx 60rpx;
+  padding: 60rpx 48rpx 40rpx;
   text-align: center;
-  overflow: hidden;
-}
-
-.hero-glow {
-  position: absolute;
-  top: -100rpx;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 600rpx;
-  height: 600rpx;
-  border-radius: 50%;
-  background: radial-gradient(circle, rgba(255, 179, 71, 0.08) 0%, transparent 70%);
-  pointer-events: none;
+  background-color: #FFFFFF;
 }
 
 .hero-content {
-  position: relative;
-  z-index: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
 }
 
-.hero-star {
-  font-size: 60rpx;
-  color: #FFD699;
-  text-shadow: 0 0 40rpx rgba(255, 179, 71, 0.5);
+.hero-emoji {
+  font-size: 80rpx;
   margin-bottom: 20rpx;
 }
 
 .hero-title {
-  font-size: 56rpx;
+  font-size: 64rpx;
   font-weight: 800;
-  background: linear-gradient(135deg, #FFD699, #FFB347);
+  color: #FF6B35;
+  background: linear-gradient(135deg, #FF6B35, #FFB830);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
-  letter-spacing: 8rpx;
-  margin-bottom: 8rpx;
+  margin-bottom: 12rpx;
 }
 
 .hero-subtitle {
-  font-size: 22rpx;
-  color: rgba(255, 255, 255, 0.3);
-  letter-spacing: 8rpx;
-  text-transform: uppercase;
-  margin-bottom: 24rpx;
+  font-size: 32rpx;
+  font-weight: 600;
+  color: #1A1A2E;
+  margin-bottom: 16rpx;
 }
 
 .hero-desc {
   font-size: 28rpx;
-  color: rgba(255, 255, 255, 0.5);
+  color: #9CA3AF;
   line-height: 1.6;
 }
 
 /* 表单 */
 .form-section {
-  padding: 0 32rpx;
+  padding: 32rpx;
 }
 
 .form-step {
-  margin-bottom: 40rpx;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1rpx solid rgba(255, 179, 71, 0.1);
-  border-radius: 24rpx;
-  padding: 36rpx 32rpx;
+  margin-bottom: 32rpx;
+  background: #FFFFFF;
+  border-radius: 32rpx;
+  padding: 40rpx 32rpx;
+  box-shadow: 0 4rpx 20rpx rgba(0, 0, 0, 0.03);
+  border: 1rpx solid #E8ECF2;
 }
 
 .step-header {
   display: flex;
   align-items: center;
-  gap: 20rpx;
+  gap: 16rpx;
   margin-bottom: 32rpx;
 }
 
 .step-number {
-  width: 56rpx;
-  height: 56rpx;
-  border-radius: 50%;
-  background: linear-gradient(135deg, rgba(255, 214, 153, 0.15), rgba(255, 179, 71, 0.25));
-  border: 1rpx solid rgba(255, 179, 71, 0.3);
+  width: 48rpx;
+  height: 48rpx;
+  border-radius: 12rpx;
+  background: #FF6B35;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -371,47 +474,47 @@ async function handleSubmit() {
 .step-num-text {
   font-size: 28rpx;
   font-weight: 700;
-  color: #FFD699;
+  color: #FFFFFF;
 }
 
 .step-title {
-  font-size: 32rpx;
+  font-size: 34rpx;
   font-weight: 700;
-  color: #f0f0f0;
-  letter-spacing: 2rpx;
+  color: #1A1A2E;
 }
 
 .form-group {
-  margin-bottom: 28rpx;
+  margin-bottom: 32rpx;
 }
 
 .form-label {
   display: block;
-  font-size: 26rpx;
-  color: rgba(255, 255, 255, 0.55);
-  margin-bottom: 12rpx;
-  letter-spacing: 1rpx;
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #1A1A2E;
+  margin-bottom: 16rpx;
 }
 
 .form-input {
   width: 100%;
-  height: 88rpx;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1rpx solid rgba(255, 255, 255, 0.08);
-  border-radius: 16rpx;
-  padding: 0 28rpx;
+  height: 96rpx;
+  background: #F5F6FA;
+  border: 2rpx solid transparent;
+  border-radius: 20rpx;
+  padding: 0 32rpx;
   font-size: 30rpx;
-  color: #f0f0f0;
+  color: #1A1A2E;
   box-sizing: border-box;
+  transition: all 0.2s;
 }
 
 .form-input:focus {
-  border-color: rgba(255, 179, 71, 0.4);
-  background: rgba(255, 255, 255, 0.06);
+  border-color: #FF6B35;
+  background: #FFFFFF;
 }
 
 .input-placeholder {
-  color: rgba(255, 255, 255, 0.2);
+  color: #9CA3AF;
 }
 
 .picker-input {
@@ -421,13 +524,12 @@ async function handleSubmit() {
 }
 
 .picker-value {
-  color: #f0f0f0;
+  color: #1A1A2E;
   font-size: 30rpx;
 }
 
 .picker-icon {
   font-size: 32rpx;
-  opacity: 0.5;
 }
 
 .form-row {
@@ -446,12 +548,11 @@ async function handleSubmit() {
 
 .days-text {
   font-size: 26rpx;
-  color: #FFD699;
-  font-weight: 600;
-  background: rgba(255, 179, 71, 0.1);
-  padding: 8rpx 28rpx;
+  color: #FF6B35;
+  font-weight: 700;
+  background: #FFF5F0;
+  padding: 10rpx 32rpx;
   border-radius: 999rpx;
-  border: 1rpx solid rgba(255, 179, 71, 0.2);
 }
 
 /* 选项网格 */
@@ -463,34 +564,38 @@ async function handleSubmit() {
 
 .option-item {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 12rpx;
-  padding: 20rpx 28rpx;
-  border-radius: 16rpx;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1rpx solid rgba(255, 255, 255, 0.08);
+  justify-content: center;
+  gap: 8rpx;
+  padding: 24rpx 16rpx;
+  border-radius: 24rpx;
+  background: #F5F6FA;
+  border: 2rpx solid transparent;
   flex: 1;
-  min-width: calc(50% - 8rpx);
+  min-width: calc(25% - 12rpx);
   box-sizing: border-box;
+  transition: all 0.2s;
 }
 
 .option-item.option-active {
-  background: linear-gradient(135deg, rgba(255, 214, 153, 0.12), rgba(255, 179, 71, 0.08));
-  border-color: rgba(255, 179, 71, 0.4);
+  background: #FFF5F0;
+  border-color: #FF6B35;
 }
 
 .option-icon {
-  font-size: 32rpx;
+  font-size: 40rpx;
 }
 
 .option-text {
-  font-size: 26rpx;
-  color: rgba(255, 255, 255, 0.7);
+  font-size: 24rpx;
+  color: #6B7280;
+  font-weight: 500;
 }
 
 .option-item.option-active .option-text {
-  color: #FFD699;
-  font-weight: 600;
+  color: #FF6B35;
+  font-weight: 700;
 }
 
 /* 标签网格 */
@@ -504,15 +609,16 @@ async function handleSubmit() {
   display: flex;
   align-items: center;
   gap: 8rpx;
-  padding: 16rpx 24rpx;
+  padding: 16rpx 28rpx;
   border-radius: 999rpx;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1rpx solid rgba(255, 255, 255, 0.08);
+  background: #F5F6FA;
+  border: 2rpx solid transparent;
+  transition: all 0.2s;
 }
 
 .tag-item.tag-active {
-  background: linear-gradient(135deg, #FFD699, #FFB347);
-  border-color: transparent;
+  background: #FF6B35;
+  border-color: #FF6B35;
 }
 
 .tag-icon {
@@ -520,35 +626,32 @@ async function handleSubmit() {
 }
 
 .tag-text {
-  font-size: 24rpx;
-  color: rgba(255, 255, 255, 0.6);
+  font-size: 26rpx;
+  color: #6B7280;
+  font-weight: 500;
 }
 
 .tag-item.tag-active .tag-text {
-  color: #0a0a0f;
-  font-weight: 600;
-}
-
-.tag-item.tag-active .tag-icon {
-  /* 保持 emoji 原色 */
+  color: #FFFFFF;
+  font-weight: 700;
 }
 
 .form-textarea {
   width: 100%;
-  min-height: 160rpx;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1rpx solid rgba(255, 255, 255, 0.08);
-  border-radius: 16rpx;
-  padding: 24rpx 28rpx;
+  min-height: 180rpx;
+  background: #F5F6FA;
+  border: 2rpx solid transparent;
+  border-radius: 24rpx;
+  padding: 24rpx 32rpx;
   font-size: 28rpx;
-  color: #f0f0f0;
+  color: #1A1A2E;
   box-sizing: border-box;
   line-height: 1.6;
 }
 
 /* 提交 */
 .submit-section {
-  padding: 32rpx 0 40rpx;
+  padding: 40rpx 0 60rpx;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -556,37 +659,40 @@ async function handleSubmit() {
 
 .submit-btn {
   width: 100%;
-  height: 100rpx;
-  background: linear-gradient(135deg, #FFD699 0%, #FFB347 100%);
+  height: 110rpx;
+  background: linear-gradient(135deg, #FF6B35 0%, #FFB830 100%);
   border: none;
-  border-radius: 999rpx;
+  border-radius: 55rpx;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 12rpx;
-  box-shadow: 0 8rpx 40rpx rgba(255, 179, 71, 0.3);
+  gap: 16rpx;
+  box-shadow: 0 12rpx 32rpx rgba(255, 107, 53, 0.25);
+}
+
+.submit-btn:active {
+  transform: scale(0.98);
 }
 
 .submit-btn[disabled] {
-  opacity: 0.4;
+  opacity: 0.5;
   box-shadow: none;
 }
 
 .submit-icon {
-  font-size: 32rpx;
-  color: #0a0a0f;
+  font-size: 36rpx;
 }
 
 .submit-text {
-  font-size: 32rpx;
+  font-size: 34rpx;
   font-weight: 700;
-  color: #0a0a0f;
-  letter-spacing: 4rpx;
+  color: #FFFFFF;
+  letter-spacing: 2rpx;
 }
 
 .submit-hint {
   font-size: 24rpx;
-  color: rgba(255, 255, 255, 0.25);
-  margin-top: 20rpx;
+  color: #9CA3AF;
+  margin-top: 24rpx;
 }
 </style>

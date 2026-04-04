@@ -1,6 +1,6 @@
 <template>
   <view class="chat-page">
-    <NavBar />
+    <NavBar show-back />
 
     <!-- 消息区域 -->
     <scroll-view
@@ -11,11 +11,11 @@
     >
       <!-- 欢迎消息 -->
       <view class="welcome-section" v-if="messages.length === 0">
-        <view class="welcome-card glass-card">
-          <text class="welcome-icon">✦</text>
-          <text class="welcome-title">旅途星辰 AI</text>
+        <view class="welcome-card">
+          <text class="welcome-emoji">🎒</text>
+          <text class="welcome-title">出门啦 AI</text>
           <text class="welcome-desc" v-if="tripStore.hasTripPlan">
-            你好！我已经了解了你的{{ tripStore.tripPlan?.city }}旅行计划，有什么想问的吗？
+            你好！我已经了解了你的{{ tripStore.tripPlan?.city }}旅行计划，关于行程有任何疑问都可以问我哦~
           </text>
           <text class="welcome-desc" v-else>
             你好！请先在首页创建旅行计划，我就能回答关于行程的问题啦~
@@ -46,7 +46,7 @@
         <view class="message-bubble" :class="msg.role">
           <!-- AI 头像 -->
           <view v-if="msg.role === 'assistant'" class="avatar avatar-ai">
-            <text class="avatar-icon">✦</text>
+            <text class="avatar-icon">🎒</text>
           </view>
 
           <view class="bubble-content" :class="msg.role">
@@ -64,7 +64,7 @@
       <view v-if="loading" class="message-row assistant">
         <view class="message-bubble assistant">
           <view class="avatar avatar-ai">
-            <text class="avatar-icon">✦</text>
+            <text class="avatar-icon">🎒</text>
           </view>
           <view class="bubble-content assistant typing-bubble">
             <view class="typing-dots">
@@ -77,7 +77,7 @@
       </view>
 
       <!-- 底部占位 -->
-      <view id="msg-bottom" style="height: 20rpx;" />
+      <view id="msg-bottom" style="height: 40rpx;" />
     </scroll-view>
 
     <!-- 输入区域 -->
@@ -86,7 +86,7 @@
         <input
           class="chat-input"
           v-model="inputText"
-          placeholder="输入你的问题..."
+          placeholder="有什么想问的？"
           placeholder-class="input-placeholder"
           confirm-type="send"
           :disabled="loading || !tripStore.hasTripPlan"
@@ -120,9 +120,9 @@ const scrollToId = ref('')
 
 const quickQuestions = [
   '这个行程的亮点是什么？',
-  '有什么美食推荐？',
-  '需要注意什么？',
-  '帮我优化一下行程',
+  '有什么必吃的美食吗？',
+  '当地天气如何？',
+  '帮我精简一下行程',
 ]
 
 const canSend = computed(() => {
@@ -186,51 +186,51 @@ function handleSend() {
   height: 100vh;
   display: flex;
   flex-direction: column;
-  background: linear-gradient(180deg, #0a0a0f 0%, #15132b 50%, #1a1035 100%);
+  background-color: #F5F6FA;
 }
 
 /* Messages area */
 .chat-messages {
   flex: 1;
-  padding: 24rpx 32rpx;
+  padding: 32rpx;
+  box-sizing: border-box;
 }
 
 /* Welcome */
 .welcome-section {
-  display: flex;
-  justify-content: center;
   padding: 40rpx 0;
 }
 
 .welcome-card {
-  padding: 48rpx 40rpx;
+  background-color: #FFFFFF;
+  border-radius: 40rpx;
+  padding: 60rpx 40rpx;
   text-align: center;
-  width: 100%;
+  box-shadow: 0 4rpx 20rpx rgba(0, 0, 0, 0.03);
+  border: 1rpx solid #E8ECF2;
 }
 
-.welcome-icon {
-  font-size: 60rpx;
-  color: #FFD699;
-  text-shadow: 0 0 32rpx rgba(255, 179, 71, 0.5);
+.welcome-emoji {
+  font-size: 80rpx;
+  display: block;
+  margin-bottom: 24rpx;
+}
+
+.welcome-title {
+  font-size: 40rpx;
+  font-weight: 800;
+  color: #1A1A2E;
   display: block;
   margin-bottom: 20rpx;
 }
 
-.welcome-title {
-  font-size: 36rpx;
-  font-weight: 700;
-  color: #FFD699;
-  display: block;
-  margin-bottom: 16rpx;
-  letter-spacing: 4rpx;
-}
-
 .welcome-desc {
   font-size: 28rpx;
-  color: rgba(255, 255, 255, 0.5);
+  color: #6B7280;
   display: block;
   line-height: 1.6;
-  margin-bottom: 32rpx;
+  margin-bottom: 40rpx;
+  padding: 0 20rpx;
 }
 
 .quick-questions {
@@ -241,30 +241,31 @@ function handleSend() {
 }
 
 .quick-item {
-  padding: 16rpx 28rpx;
+  padding: 16rpx 32rpx;
   border-radius: 999rpx;
-  background: rgba(255, 179, 71, 0.08);
-  border: 1rpx solid rgba(255, 179, 71, 0.2);
+  background-color: #FFF5F0;
+  border: 1rpx solid #FFE4D6;
 }
 
 .quick-item:active {
-  background: rgba(255, 179, 71, 0.15);
+  background-color: #FFE4D6;
 }
 
 .quick-text {
   font-size: 24rpx;
-  color: #FFD699;
+  color: #FF6B35;
+  font-weight: 600;
 }
 
 /* Message bubbles */
 .message-row {
-  margin-bottom: 24rpx;
+  margin-bottom: 32rpx;
 }
 
 .message-bubble {
   display: flex;
   align-items: flex-start;
-  gap: 16rpx;
+  gap: 20rpx;
 }
 
 .message-row.user .message-bubble {
@@ -272,9 +273,9 @@ function handleSend() {
 }
 
 .avatar {
-  width: 64rpx;
-  height: 64rpx;
-  border-radius: 50%;
+  width: 72rpx;
+  height: 72rpx;
+  border-radius: 24rpx;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -282,58 +283,67 @@ function handleSend() {
 }
 
 .avatar-ai {
-  background: linear-gradient(135deg, rgba(255, 214, 153, 0.15), rgba(255, 179, 71, 0.25));
-  border: 1rpx solid rgba(255, 179, 71, 0.3);
+  background-color: #FFFFFF;
+  border: 1rpx solid #E8ECF2;
 }
 
 .avatar-user {
-  background: rgba(255, 255, 255, 0.08);
-  border: 1rpx solid rgba(255, 255, 255, 0.1);
+  background-color: #FF6B35;
 }
 
 .avatar-icon {
-  font-size: 28rpx;
+  font-size: 36rpx;
 }
 
 .bubble-content {
-  max-width: 75%;
+  max-width: 70%;
   padding: 24rpx 32rpx;
-  border-radius: 24rpx;
+  border-radius: 32rpx;
+  position: relative;
 }
 
 .bubble-content.assistant {
-  background: rgba(255, 255, 255, 0.05);
-  border: 1rpx solid rgba(255, 255, 255, 0.08);
+  background-color: #FFFFFF;
+  border: 1rpx solid #E8ECF2;
   border-top-left-radius: 8rpx;
+  box-shadow: 0 2rpx 10rpx rgba(0, 0, 0, 0.02);
 }
 
 .bubble-content.user {
-  background: linear-gradient(135deg, rgba(255, 214, 153, 0.15), rgba(255, 179, 71, 0.1));
-  border: 1rpx solid rgba(255, 179, 71, 0.2);
+  background-color: #FF6B35;
   border-top-right-radius: 8rpx;
+  box-shadow: 0 4rpx 12rpx rgba(255, 107, 53, 0.2);
 }
 
 .bubble-text {
-  font-size: 28rpx;
-  color: rgba(255, 255, 255, 0.85);
-  line-height: 1.7;
+  font-size: 30rpx;
+  line-height: 1.6;
+}
+
+.assistant .bubble-text {
+  color: #1A1A2E;
+}
+
+.user .bubble-text {
+  color: #FFFFFF;
+  font-weight: 500;
 }
 
 /* Typing animation */
 .typing-bubble {
-  padding: 28rpx 36rpx;
+  padding: 32rpx 40rpx;
 }
 
 .typing-dots {
   display: flex;
-  gap: 10rpx;
+  gap: 12rpx;
 }
 
 .typing-dot {
   width: 12rpx;
   height: 12rpx;
   border-radius: 50%;
-  background: rgba(255, 179, 71, 0.6);
+  background-color: #FF6B35;
   animation: typingDot 1.4s ease-in-out infinite;
 }
 
@@ -347,56 +357,55 @@ function handleSend() {
 
 /* Input area */
 .chat-input-area {
-  padding: 20rpx 32rpx 24rpx;
-  background: rgba(10, 10, 15, 0.95);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border-top: 1rpx solid rgba(255, 255, 255, 0.06);
+  padding: 24rpx 32rpx calc(24rpx + env(safe-area-inset-bottom));
+  background-color: #FFFFFF;
+  border-top: 1rpx solid #E8ECF2;
 }
 
 .input-row {
   display: flex;
   align-items: center;
-  gap: 16rpx;
+  gap: 20rpx;
 }
 
 .chat-input {
   flex: 1;
-  height: 80rpx;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1rpx solid rgba(255, 255, 255, 0.08);
-  border-radius: 999rpx;
-  padding: 0 32rpx;
-  font-size: 28rpx;
-  color: #f0f0f0;
-}
-
-.chat-input:focus {
-  border-color: rgba(255, 179, 71, 0.3);
+  height: 88rpx;
+  background-color: #F5F6FA;
+  border-radius: 44rpx;
+  padding: 0 36rpx;
+  font-size: 30rpx;
+  color: #1A1A2E;
 }
 
 .input-placeholder {
-  color: rgba(255, 255, 255, 0.2);
+  color: #9CA3AF;
 }
 
 .send-btn {
-  width: 80rpx;
-  height: 80rpx;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #FFD699, #FFB347);
+  width: 88rpx;
+  height: 88rpx;
+  border-radius: 44rpx;
+  background: linear-gradient(135deg, #FF6B35, #FFB830);
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  box-shadow: 0 8rpx 20rpx rgba(255, 107, 53, 0.2);
+}
+
+.send-btn:active {
+  transform: scale(0.95);
 }
 
 .send-btn.send-disabled {
-  opacity: 0.3;
+  opacity: 0.4;
+  box-shadow: none;
 }
 
 .send-icon {
-  font-size: 36rpx;
+  font-size: 40rpx;
   font-weight: 700;
-  color: #0a0a0f;
+  color: #FFFFFF;
 }
 </style>

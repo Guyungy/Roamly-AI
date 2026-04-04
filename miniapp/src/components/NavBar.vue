@@ -5,18 +5,14 @@
         <text class="back-icon">‹</text>
       </view>
       <view class="navbar-brand">
-        <text class="brand-icon">✦</text>
-        <view class="brand-text-group">
-          <text class="brand-title">旅途星辰</text>
-          <text class="brand-sub">TripStar · AI</text>
-        </view>
+        <text class="brand-icon">🎒</text>
+        <text class="brand-title">出门啦</text>
       </view>
       <view class="navbar-right">
         <slot name="right" />
       </view>
     </view>
   </view>
-  <!-- 占位 -->
   <view :style="{ height: (statusBarHeight + navHeight) + 'px' }" />
 </template>
 
@@ -34,7 +30,6 @@ const emit = defineEmits<{
 const statusBarHeight = ref(20)
 const navHeight = ref(44)
 
-// 获取系统信息
 try {
   const sysInfo = uni.getSystemInfoSync()
   statusBarHeight.value = sysInfo.statusBarHeight || 20
@@ -62,10 +57,8 @@ function handleBack() {
   left: 0;
   right: 0;
   z-index: 999;
-  background: linear-gradient(180deg, rgba(10, 10, 15, 0.95) 0%, rgba(10, 10, 15, 0.85) 100%);
-  backdrop-filter: blur(40px);
-  -webkit-backdrop-filter: blur(40px);
-  border-bottom: 1rpx solid rgba(255, 179, 71, 0.12);
+  background: #FFFFFF;
+  border-bottom: 1rpx solid #F0F2F5;
 }
 
 .navbar-content {
@@ -82,46 +75,32 @@ function handleBack() {
   align-items: center;
   justify-content: center;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.06);
-  margin-right: 16rpx;
+  background: #F5F6FA;
+  margin-right: 12rpx;
 }
 
 .back-icon {
   font-size: 40rpx;
-  color: var(--color-brand, #FFD699);
+  color: #FF6B35;
   font-weight: 300;
 }
 
 .navbar-brand {
   display: flex;
   align-items: center;
-  gap: 16rpx;
+  gap: 12rpx;
   flex: 1;
 }
 
 .brand-icon {
-  font-size: 40rpx;
-  color: #FFD699;
-  text-shadow: 0 0 16rpx rgba(255, 179, 71, 0.5);
-}
-
-.brand-text-group {
-  display: flex;
-  flex-direction: column;
+  font-size: 36rpx;
 }
 
 .brand-title {
-  font-size: 32rpx;
-  font-weight: 700;
-  color: #FFD699;
+  font-size: 34rpx;
+  font-weight: 800;
+  color: #FF6B35;
   letter-spacing: 2rpx;
-}
-
-.brand-sub {
-  font-size: 18rpx;
-  color: rgba(255, 255, 255, 0.3);
-  letter-spacing: 4rpx;
-  text-transform: uppercase;
 }
 
 .navbar-right {

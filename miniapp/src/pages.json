@@ -4,68 +4,92 @@
       "path": "pages/landing/index",
       "style": {
         "navigationStyle": "custom",
-        "navigationBarTitleText": "",
-        "backgroundColor": "#0a0a0f",
-        "backgroundColorTop": "#0a0a0f",
-        "backgroundColorBottom": "#0a0a0f",
-        "app-plus": {
-          "titleNView": false
-        }
+        "backgroundColor": "#F5F6FA",
+        "backgroundColorTop": "#FFFFFF",
+        "backgroundColorBottom": "#F5F6FA"
+      }
+    },
+    {
+      "path": "pages/nearby/index",
+      "style": {
+        "navigationStyle": "custom",
+        "backgroundColor": "#F5F6FA",
+        "backgroundColorTop": "#FFFFFF",
+        "backgroundColorBottom": "#F5F6FA"
+      }
+    },
+    {
+      "path": "pages/history/index",
+      "style": {
+        "navigationStyle": "custom",
+        "backgroundColor": "#F5F6FA",
+        "backgroundColorTop": "#FFFFFF",
+        "backgroundColorBottom": "#F5F6FA"
+      }
+    },
+    {
+      "path": "pages/profile/index",
+      "style": {
+        "navigationStyle": "custom",
+        "backgroundColor": "#F5F6FA",
+        "backgroundColorTop": "#FFFFFF",
+        "backgroundColorBottom": "#F5F6FA"
       }
     },
     {
       "path": "pages/result/index",
       "style": {
         "navigationStyle": "custom",
-        "navigationBarTitleText": "",
-        "backgroundColor": "#0a0a0f",
-        "backgroundColorTop": "#0a0a0f",
-        "backgroundColorBottom": "#0a0a0f",
-        "app-plus": {
-          "titleNView": false
-        }
+        "backgroundColor": "#F5F6FA",
+        "backgroundColorTop": "#FFFFFF",
+        "backgroundColorBottom": "#F5F6FA"
       }
     },
     {
       "path": "pages/chat/index",
       "style": {
         "navigationStyle": "custom",
-        "navigationBarTitleText": "",
-        "backgroundColor": "#0a0a0f",
-        "backgroundColorTop": "#0a0a0f",
-        "backgroundColorBottom": "#0a0a0f"
+        "backgroundColor": "#F5F6FA",
+        "backgroundColorTop": "#FFFFFF",
+        "backgroundColorBottom": "#F5F6FA"
       }
     }
   ],
   "globalStyle": {
-    "navigationBarTextStyle": "white",
-    "navigationBarBackgroundColor": "#0a0a0f",
-    "backgroundColor": "#0a0a0f",
+    "navigationBarTextStyle": "black",
+    "navigationBarBackgroundColor": "#FFFFFF",
+    "backgroundColor": "#F5F6FA",
     "backgroundTextStyle": "dark"
   },
   "tabBar": {
-    "color": "#666",
-    "selectedColor": "#FFD699",
-    "backgroundColor": "#0d0d15",
-    "borderStyle": "black",
+    "color": "#9CA3AF",
+    "selectedColor": "#FF6B35",
+    "backgroundColor": "#FFFFFF",
+    "borderStyle": "white",
     "list": [
       {
         "pagePath": "pages/landing/index",
-        "text": "规划",
+        "text": "长途",
         "iconPath": "static/tab-plan.png",
         "selectedIconPath": "static/tab-plan-active.png"
       },
       {
-        "pagePath": "pages/result/index",
+        "pagePath": "pages/nearby/index",
+        "text": "附近",
+        "iconPath": "static/tab-nearby.png",
+        "selectedIconPath": "static/tab-nearby-active.png"
+      },
+      {
+        "pagePath": "pages/history/index",
         "text": "行程",
         "iconPath": "static/tab-trip.png",
         "selectedIconPath": "static/tab-trip-active.png"
       },
       {
-        "pagePath": "pages/chat/index",
-        "text": "问问AI",
-        "iconPath": "static/tab-chat.png",
-        "selectedIconPath": "static/tab-chat-active.png"
+        "pagePath": "pages/profile/index",
+        "text": "我的",
+        "iconPath": "static/tab-profile.png",
+        "selectedIconPath": "static/tab-profile-active.png"
       }
     ]
   }

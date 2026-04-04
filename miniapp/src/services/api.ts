@@ -129,6 +129,24 @@ export async function healthCheck(): Promise<any> {
 }
 
 /**
+ * 逆地理编码 — 经纬度转城市名（通过后端中转，避免前端暴露 Key）
+ */
+export async function reverseGeocode(latitude: number, longitude: number): Promise<{
+  city: string
+  district: string
+  address: string
+  province: string
+}> {
+  const res = await request<{
+    success: boolean
+    data: { city: string; district: string; address: string; province: string }
+  }>({
+    url: `/api/map/reverse-geocode?longitude=${longitude}&latitude=${latitude}`,
+  })
+  return res.data
+}
+
+/**
  * 获取景点图片
  */
 export async function getAttractionPhoto(name: string, city?: string): Promise<string | null> {

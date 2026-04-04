@@ -1,7 +1,7 @@
 {
-  "name": "旅途星辰",
-  "appid": "__UNI__ROAMLYAI",
-  "description": "AI 智能旅行规划助手",
+  "name": "出门啦",
+  "appid": "__UNI__CHUMENLA",
+  "description": "AI 帮你规划出行，说走就走！",
   "versionName": "2.0.0",
   "versionCode": "200",
   "transformPx": false,
@@ -24,7 +24,7 @@
     "usingComponents": true
   },
   "h5": {
-    "title": "旅途星辰 - AI旅行助手",
+    "title": "出门啦 - AI出行规划",
     "router": {
       "mode": "history"
     }

@@ -5,16 +5,18 @@
     <view v-if="tripStore.hasTripPlan" class="result-content">
       <!-- 城市头部 -->
       <view class="city-hero">
-        <view class="city-hero-glow" />
+        <view class="hero-emoji">🎒</view>
         <text class="city-name">{{ tripPlan!.city }}</text>
-        <text class="city-date">{{ tripPlan!.start_date }} — {{ tripPlan!.end_date }}</text>
+        <view class="city-date-box">
+          <text class="city-date">{{ tripPlan!.start_date }} — {{ tripPlan!.end_date }}</text>
+        </view>
         <text v-if="tripPlan!.overall_suggestions" class="city-suggestion">
           {{ tripPlan!.overall_suggestions }}
         </text>
       </view>
 
       <!-- Tab 切换 -->
-      <scroll-view scroll-x class="tab-scroll">
+      <scroll-view scroll-x class="tab-scroll" :show-scrollbar="false">
         <view class="tab-bar">
           <view
             v-for="tab in tabs"
@@ -80,18 +82,18 @@
 
       <!-- 悬浮AI按钮 -->
       <view class="fab-chat" @tap="goToChat">
-        <text class="fab-icon">✦</text>
+        <text class="fab-icon">🎒</text>
         <text class="fab-text">问AI</text>
       </view>
     </view>
 
     <!-- 空状态 -->
     <view v-else class="empty-state">
-      <text class="empty-icon">✦</text>
+      <text class="empty-icon">🎒</text>
       <text class="empty-title">还没有旅行计划</text>
-      <text class="empty-desc">去首页创建你的第一个 AI 旅行计划吧</text>
+      <text class="empty-desc">去首页让 AI 帮你规划行程吧</text>
       <button class="btn-primary" @tap="goToLanding">
-        <text class="submit-text">开始规划</text>
+        <text class="submit-text">立即开始</text>
       </button>
     </view>
   </view>
@@ -154,12 +156,12 @@ const mapMarkers = computed(() => {
           title: attr.name,
           callout: {
             content: `D${day.day_index + 1}-${idx + 1} ${attr.name}`,
-            color: '#FFD699',
-            bgColor: '#1a1035',
-            borderColor: 'rgba(255,179,71,0.3)',
+            color: '#FF6B35',
+            bgColor: '#FFFFFF',
+            borderColor: '#FFE4D6',
             borderWidth: 1,
             borderRadius: 8,
-            padding: 6,
+            padding: 8,
             display: 'ALWAYS',
             fontSize: 12,
           },
@@ -188,8 +190,8 @@ const mapPolyline = computed(() => {
   if (allPoints.length < 2) return []
   return [{
     points: allPoints,
-    color: '#FFD69980',
-    width: 3,
+    color: '#FF6B3580',
+    width: 4,
     dottedLine: true,
   }]
 })
@@ -211,7 +213,7 @@ async function loadAttractionImages() {
 }
 
 function goToChat() {
-  uni.switchTab({ url: '/pages/chat/index' })
+  uni.navigateTo({ url: '/pages/chat/index' })
 }
 
 function goToLanding() {
@@ -228,101 +230,102 @@ onMounted(() => {
 <style scoped>
 .result-page {
   min-height: 100vh;
-  background: linear-gradient(180deg, #0a0a0f 0%, #15132b 50%, #1a1035 100%);
+  background-color: #F5F6FA;
   padding-bottom: 120rpx;
 }
 
 /* City Hero */
 .city-hero {
-  position: relative;
-  padding: 48rpx 40rpx;
+  background-color: #FFFFFF;
+  padding: 60rpx 40rpx 40rpx;
   text-align: center;
-  overflow: hidden;
+  border-bottom-left-radius: 48rpx;
+  border-bottom-right-radius: 48rpx;
+  box-shadow: 0 4rpx 20rpx rgba(0, 0, 0, 0.02);
 }
 
-.city-hero-glow {
-  position: absolute;
-  top: -80rpx;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 500rpx;
-  height: 400rpx;
-  border-radius: 50%;
-  background: radial-gradient(circle, rgba(255, 179, 71, 0.06) 0%, transparent 70%);
-  pointer-events: none;
+.hero-emoji {
+  font-size: 64rpx;
+  margin-bottom: 16rpx;
 }
 
 .city-name {
   display: block;
-  font-size: 52rpx;
+  font-size: 56rpx;
   font-weight: 800;
-  background: linear-gradient(135deg, #FFD699, #FFB347);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  letter-spacing: 8rpx;
-  position: relative;
-  z-index: 1;
+  color: #1A1A2E;
+  margin-bottom: 16rpx;
+}
+
+.city-date-box {
+  display: inline-block;
+  background-color: #FFF5F0;
+  padding: 8rpx 32rpx;
+  border-radius: 99rpx;
+  margin-bottom: 24rpx;
 }
 
 .city-date {
-  display: block;
   font-size: 26rpx;
-  color: rgba(255, 255, 255, 0.4);
-  margin-top: 12rpx;
-  letter-spacing: 2rpx;
-  position: relative;
-  z-index: 1;
+  color: #FF6B35;
+  font-weight: 700;
 }
 
 .city-suggestion {
   display: block;
-  font-size: 26rpx;
-  color: rgba(255, 255, 255, 0.35);
-  margin-top: 16rpx;
+  font-size: 28rpx;
+  color: #6B7280;
   line-height: 1.6;
-  position: relative;
-  z-index: 1;
+  padding: 0 20rpx;
 }
 
 /* Tab Bar */
 .tab-scroll {
+  background-color: #FFFFFF;
+  margin-top: 20rpx;
   white-space: nowrap;
-  border-bottom: 1rpx solid rgba(255, 255, 255, 0.06);
+  position: sticky;
+  top: 0;
+  z-index: 10;
 }
 
 .tab-bar {
   display: inline-flex;
-  padding: 0 32rpx;
-  gap: 8rpx;
+  padding: 0 24rpx;
 }
 
 .tab-item {
   display: inline-flex;
   align-items: center;
-  gap: 8rpx;
-  padding: 24rpx 32rpx;
-  border-bottom: 3rpx solid transparent;
-  white-space: nowrap;
+  gap: 12rpx;
+  padding: 28rpx 36rpx;
+  position: relative;
 }
 
-.tab-item.tab-active {
-  border-bottom-color: #FFD699;
+.tab-item.tab-active::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 36rpx;
+  right: 36rpx;
+  height: 6rpx;
+  background-color: #FF6B35;
+  border-radius: 3rpx;
 }
 
 .tab-icon {
-  font-size: 28rpx;
+  font-size: 30rpx;
 }
 
 .tab-text {
-  font-size: 28rpx;
-  color: rgba(255, 255, 255, 0.45);
+  font-size: 30rpx;
+  color: #9CA3AF;
   font-weight: 500;
 }
 
 .tab-item.tab-active .tab-text {
-  color: #FFD699;
-  font-weight: 700;
+  color: #1A1A2E;
+  font-weight: 800;
 }
 
 /* Section content */
@@ -337,36 +340,35 @@ onMounted(() => {
 
 .trip-map {
   width: 100%;
-  height: 80vh;
+  height: calc(100vh - 400rpx);
 }
 
 /* FAB */
 .fab-chat {
   position: fixed;
-  right: 32rpx;
-  bottom: 200rpx;
+  right: 40rpx;
+  bottom: 60rpx;
   width: 120rpx;
   height: 120rpx;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #FFD699, #FFB347);
+  border-radius: 60rpx;
+  background: linear-gradient(135deg, #FF6B35, #FFB830);
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 8rpx 40rpx rgba(255, 179, 71, 0.4);
+  box-shadow: 0 12rpx 32rpx rgba(255, 107, 53, 0.3);
   z-index: 100;
 }
 
 .fab-icon {
-  font-size: 32rpx;
-  color: #0a0a0f;
+  font-size: 40rpx;
 }
 
 .fab-text {
   font-size: 20rpx;
-  color: #0a0a0f;
-  font-weight: 700;
-  margin-top: 2rpx;
+  color: #FFFFFF;
+  font-weight: 800;
+  margin-top: 4rpx;
 }
 
 /* Empty */
@@ -379,31 +381,47 @@ onMounted(() => {
 }
 
 .empty-icon {
-  font-size: 80rpx;
-  color: rgba(255, 179, 71, 0.3);
+  font-size: 100rpx;
   margin-bottom: 32rpx;
 }
 
 .empty-title {
   font-size: 36rpx;
-  font-weight: 700;
-  color: rgba(255, 255, 255, 0.6);
+  font-weight: 800;
+  color: #1A1A2E;
   margin-bottom: 16rpx;
 }
 
 .empty-desc {
   font-size: 28rpx;
-  color: rgba(255, 255, 255, 0.3);
-  margin-bottom: 48rpx;
+  color: #9CA3AF;
+  margin-bottom: 60rpx;
+}
+
+.btn-primary {
+  width: 320rpx;
+  height: 96rpx;
+  background: linear-gradient(135deg, #FF6B35, #FFB830);
+  border-radius: 48rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+}
+
+.submit-text {
+  color: #FFFFFF;
+  font-size: 32rpx;
+  font-weight: 700;
 }
 
 .empty-section {
-  padding: 80rpx 0;
+  padding: 120rpx 0;
   text-align: center;
 }
 
 .empty-text {
   font-size: 28rpx;
-  color: rgba(255, 255, 255, 0.3);
+  color: #9CA3AF;
 }
 </style>

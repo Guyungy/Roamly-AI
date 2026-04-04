@@ -140,6 +140,80 @@ async def plan_route(request: RouteRequest):
 
 
 @router.get(
+    "/reverse-geocode",
+    summary="逆地理编码",
+    description="根据经纬度获取城市名称"
+)
+async def reverse_geocode(
+    longitude: float = Query(..., description="经度", example=116.397428),
+    latitude: float = Query(..., description="纬度", example=39.90923)
+):
+    """
+    逆地理编码 — 经纬度转城市名
+
+    小程序获取定位后调用此接口获取所在城市名称，
+    后端使用高德 Web API Key 调用，避免前端暴露 Key。
+    """
+    import httpx
+    from ...config import get_settings
+
+    settings = get_settings()
+    amap_key = settings.vite_amap_web_key
+
+    if not amap_key:
+        raise HTTPException(status_code=500, detail="高德地图 API Key 未配置")
+
+    try:
+        url = "https://restapi.amap.com/v3/geocode/regeo"
+        params = {
+            "location": f"{longitude},{latitude}",
+            "key": amap_key,
+            "extensions": "base",
+        }
+
+        async with httpx.AsyncClient(timeout=10) as client:
+            resp = await client.get(url, params=params)
+            resp.raise_for_status()
+
+        data = resp.json()
+
+        if data.get("status") != "1":
+            raise HTTPException(status_code=502, detail=f"高德API错误: {data.get('info', '未知')}")
+
+        component = data.get("regeocode", {}).get("addressComponent", {})
+        city = component.get("city", "")
+        # 直辖市 city 为空数组，取 province
+        if not city or (isinstance(city, list) and len(city) == 0):
+            city = component.get("province", "")
+
+        if isinstance(city, list):
+            city = ""
+
+        city_name = str(city).replace("市", "").replace("省", "")
+        district = str(component.get("district", ""))
+        formatted_address = data.get("regeocode", {}).get("formatted_address", "")
+
+        return {
+            "success": True,
+            "data": {
+                "city": city_name,
+                "district": district,
+                "address": formatted_address,
+                "province": str(component.get("province", "")).replace("省", ""),
+            }
+        }
+
+    except httpx.HTTPError as e:
+        print(f"❌ 逆地理编码请求失败: {e}")
+        raise HTTPException(status_code=502, detail=f"地图服务请求失败: {str(e)}")
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"❌ 逆地理编码失败: {e}")
+        raise HTTPException(status_code=500, detail=f"逆地理编码失败: {str(e)}")
+
+
+@router.get(
     "/health",
     summary="健康检查",
     description="检查地图服务是否正常"
