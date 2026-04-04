@@ -154,7 +154,7 @@
 <script setup lang="ts">
 import { computed, nextTick, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import axios from 'axios'
+import { chatWithTrip } from '@/services/api'
 import type { ChatMessage, TripPlan } from '@/types'
 
 const props = defineProps<{
@@ -225,15 +225,14 @@ const sendChatMessage = async () => {
   scrollChatToBottom()
 
   try {
-    const apiBase = import.meta.env.VITE_API_BASE_URL ?? ''
-    const res = await axios.post(`${apiBase}/api/chat/ask`, {
+    const res = await chatWithTrip({
       message: text,
-      trip_plan: props.tripPlan,
+      trip_plan: props.tripPlan as any,
       history: chatHistory.value.slice(0, -1),
     })
 
-    if (res.data.success) {
-      chatHistory.value.push({ role: 'assistant', content: res.data.reply })
+    if (res.success) {
+      chatHistory.value.push({ role: 'assistant', content: res.reply })
     } else {
       chatHistory.value.push({ role: 'assistant', content: t('result.chat.replyFallback') })
     }

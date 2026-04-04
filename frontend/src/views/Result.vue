@@ -573,10 +573,12 @@ import { EffectCoverflow, Keyboard, Mousewheel } from 'swiper/modules'
 import NavBar from '@/components/NavBar.vue'
 import OverviewAttractionCard from '@/components/OverviewAttractionCard.vue'
 import AIChat from '@/components/AIChat.vue'
+import { useTripStore } from '@/stores/trip'
 import type { TripPlan, KnowledgeGraphData, GraphCategory, Attraction, Meal, Hotel, WeatherInfo } from '@/types'
 
 const router = useRouter()
 const { t, locale } = useI18n()
+const tripStore = useTripStore()
 const tripPlan = ref<TripPlan | null>(null)
 const editMode = ref(false)
 const originalPlan = ref<TripPlan | null>(null)
@@ -1133,16 +1135,14 @@ const buildKgBoundaryPositionMap = (
 }
 
 onMounted(async () => {
-  const data = sessionStorage.getItem('tripPlan')
-  if (data) {
-    tripPlan.value = JSON.parse(data)
+  if (tripStore.tripPlan) {
+    tripPlan.value = tripStore.tripPlan
     pendingBudgetItems.value = []
     // 加载景点图片
     await loadAttractionPhotos()
     // 加载知识图谱
-    const gd = sessionStorage.getItem('graphData')
-    if (gd) {
-      graphData.value = JSON.parse(gd)
+    if (tripStore.graphData) {
+      graphData.value = tripStore.graphData
       graphCategories.value = graphData.value?.categories || []
     }
     if (activeSection.value === 'map') await ensureMapReady()
@@ -1229,9 +1229,9 @@ const toggleEditMode = () => {
 const saveChanges = () => {
   editMode.value = false
   recalculateBudgetTotals()
-  // 更新sessionStorage
+  // 更新 store
   if (tripPlan.value) {
-    sessionStorage.setItem('tripPlan', JSON.stringify(tripPlan.value))
+    tripStore.setTripPlan(tripPlan.value, graphData.value)
   }
   message.success(t('result.messages.changesSaved'))
 
@@ -1527,7 +1527,9 @@ const editBudgetItemAmount = (item: BudgetDetailItem) => {
   if (!changed) return
 
   recalculateBudgetTotals(transportationTotal)
-  sessionStorage.setItem('tripPlan', JSON.stringify(tripPlan.value))
+  if (tripPlan.value) {
+    tripStore.setTripPlan(tripPlan.value, graphData.value)
+  }
   message.success(t('result.messages.budgetAmountUpdated'))
 }
 
@@ -1609,7 +1611,9 @@ const deleteBudgetItem = (item: BudgetDetailItem) => {
       : undefined
 
   recalculateBudgetTotals(transportationTotal)
-  sessionStorage.setItem('tripPlan', JSON.stringify(tripPlan.value))
+  if (tripPlan.value) {
+    tripStore.setTripPlan(tripPlan.value, graphData.value)
+  }
 
   if (map) {
     map.destroy()
@@ -1659,7 +1663,9 @@ const restoreBudgetItem = (pendingItem: BudgetRestoreItem) => {
 
   recalculateBudgetTotals(transportationTotal)
   pendingBudgetItems.value = pendingBudgetItems.value.filter((item) => item.uid !== pendingItem.uid)
-  sessionStorage.setItem('tripPlan', JSON.stringify(tripPlan.value))
+  if (tripPlan.value) {
+    tripStore.setTripPlan(tripPlan.value, graphData.value)
+  }
 
   if (map) {
     map.destroy()
@@ -4168,6 +4174,13 @@ const drawRoutes = async (AMap: any, attractions: any[]): Promise<any[]> => {
 
 #amap-container .amap-info-sharp {
   display: none !important;
+}
+</style>
+
+t;
+}
+</style>
+
 }
 </style>
 

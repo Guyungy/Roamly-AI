@@ -1,6 +1,7 @@
 """旅行规划API路由 - 异步轮询模式"""
 
 import asyncio
+import time
 import uuid
 from fastapi import APIRouter, HTTPException
 from ...models.schemas import (
@@ -13,8 +14,37 @@ from ...services.knowledge_graph_service import build_knowledge_graph
 
 router = APIRouter(prefix="/trip", tags=["旅行规划"])
 
-# 内存任务存储（单实例部署足够）
+# 内存任务存储
 _tasks: dict = {}
+
+# 任务配置
+TASK_TTL_SECONDS = 1800       # 任务最大保留时间 30 分钟
+TASK_TIMEOUT_SECONDS = 600    # 单次任务最大执行时间 10 分钟
+CLEANUP_INTERVAL_SECONDS = 300  # 清理间隔 5 分钟
+
+_cleanup_task = None
+
+
+async def _cleanup_stale_tasks():
+    """后台定期清理过期任务"""
+    while True:
+        await asyncio.sleep(CLEANUP_INTERVAL_SECONDS)
+        now = time.time()
+        stale_keys = [
+            k for k, v in _tasks.items()
+            if now - v.get("created_at", now) > TASK_TTL_SECONDS
+        ]
+        for k in stale_keys:
+            del _tasks[k]
+        if stale_keys:
+            print(f"🧹 已清理 {len(stale_keys)} 个过期任务")
+
+
+def start_cleanup_loop():
+    """启动清理循环（由 lifespan 调用）"""
+    global _cleanup_task
+    if _cleanup_task is None:
+        _cleanup_task = asyncio.create_task(_cleanup_stale_tasks())
 
 
 @router.post(
@@ -23,9 +53,7 @@ _tasks: dict = {}
     description="异步提交旅行规划请求，立即返回 task_id，通过 /trip/status/{task_id} 轮询结果"
 )
 async def plan_trip(request: TripRequest):
-    """
-    提交旅行规划任务（立即返回 task_id）
-    """
+    """提交旅行规划任务（立即返回 task_id）"""
     task_id = str(uuid.uuid4())[:8]
 
     print(f"\n{'='*60}")
@@ -35,31 +63,42 @@ async def plan_trip(request: TripRequest):
     print(f"   天数: {request.travel_days}")
     print(f"{'='*60}\n")
 
-    # 将任务状态标记为进行中
-    _tasks[task_id] = {"status": "processing", "progress": "正在初始化智能体..."}
+    _tasks[task_id] = {
+        "status": "processing",
+        "progress": "正在初始化智能体...",
+        "created_at": time.time(),
+    }
 
-    # 启动后台任务
     asyncio.create_task(_run_trip_planning(task_id, request))
 
     return {"task_id": task_id, "status": "processing", "message": "任务已提交，请轮询 /api/trip/status/" + task_id}
 
 
 async def _run_trip_planning(task_id: str, request: TripRequest):
-    """后台执行旅行规划"""
+    """后台执行旅行规划（带超时保护）"""
     try:
-        _tasks[task_id]["progress"] = "正在获取多智能体系统实例..."
-        agent = get_trip_planner_agent()
+        async def _do_planning():
+            _tasks[task_id]["progress"] = "正在获取多智能体系统实例..."
+            agent = get_trip_planner_agent()
 
-        _tasks[task_id]["progress"] = "AI 正在规划行程，请稍候..."
-        trip_plan = await agent.plan_trip(request)
+            _tasks[task_id]["progress"] = "AI 正在规划行程，请稍候..."
+            trip_plan = await agent.plan_trip(request)
 
-        _tasks[task_id]["progress"] = "正在构建知识图谱..."
-        graph_data = build_knowledge_graph(trip_plan)
+            _tasks[task_id]["progress"] = "正在构建知识图谱..."
+            graph_data = build_knowledge_graph(trip_plan)
+
+            return trip_plan, graph_data
+
+        trip_plan, graph_data = await asyncio.wait_for(
+            _do_planning(),
+            timeout=TASK_TIMEOUT_SECONDS
+        )
 
         print(f"✅ 任务 {task_id} 完成")
 
         _tasks[task_id] = {
             "status": "completed",
+            "created_at": _tasks.get(task_id, {}).get("created_at", time.time()),
             "result": TripPlanResponse(
                 success=True,
                 message="旅行计划生成成功",
@@ -68,12 +107,21 @@ async def _run_trip_planning(task_id: str, request: TripRequest):
             )
         }
 
+    except asyncio.TimeoutError:
+        print(f"⏰ 任务 {task_id} 超时 (>{TASK_TIMEOUT_SECONDS}s)")
+        _tasks[task_id] = {
+            "status": "failed",
+            "created_at": _tasks.get(task_id, {}).get("created_at", time.time()),
+            "error": f"任务执行超时（超过 {TASK_TIMEOUT_SECONDS // 60} 分钟）"
+        }
+
     except Exception as e:
         print(f"❌ 任务 {task_id} 失败: {e}")
         import traceback
         traceback.print_exc()
         _tasks[task_id] = {
             "status": "failed",
+            "created_at": _tasks.get(task_id, {}).get("created_at", time.time()),
             "error": str(e)
         }
 
@@ -86,13 +134,12 @@ async def _run_trip_planning(task_id: str, request: TripRequest):
 async def get_task_status(task_id: str):
     """查询任务执行状态"""
     if task_id not in _tasks:
-        raise HTTPException(status_code=404, detail="任务不存在")
+        raise HTTPException(status_code=404, detail="任务不存在或已过期")
 
     task = _tasks[task_id]
 
     if task["status"] == "completed":
         result = task["result"]
-        # 任务完成后清理内存
         del _tasks[task_id]
         return {
             "status": "completed",
@@ -124,8 +171,8 @@ async def health_check():
         return {
             "status": "healthy",
             "service": "trip-planner",
-            "agent_name": agent.agent.name,
-            "tools_count": len(agent.agent.list_tools())
+            "agent_name": agent.agent.name if hasattr(agent, 'agent') else "MultiAgentTripPlanner",
+            "active_tasks": len(_tasks)
         }
     except Exception as e:
         raise HTTPException(

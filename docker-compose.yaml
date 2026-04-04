@@ -1,24 +1,33 @@
 version: '3.8'
 
 services:
-  trip-planner:
+  # 后端 API 服务
+  backend:
     build:
-      context: .
+      context: ./backend
       dockerfile: Dockerfile
-      args:
-        VITE_AMAP_WEB_JS_KEY: ${VITE_AMAP_WEB_JS_KEY:-your_amap_web_js_api_key_here}
-    container_name: helloagents-trip-planner
     ports:
-      - "7860:7860"
+      - "8000:8000"
+    env_file:
+      - ./backend/.env
     environment:
-      - LLM_API_KEY=${LLM_API_KEY:-your_key}
-      - LLM_BASE_URL=${LLM_BASE_URL:-your_url}
-      - LLM_MODEL_ID=${LLM_MODEL_ID:-your_model}
-      - LLM_TIMEOUT=${LLM_TIMEOUT:-600}
-      - VITE_AMAP_WEB_KEY=${VITE_AMAP_WEB_KEY:-your_web_api_key_here}
-      - UNSPLASH_ACCESS_KEY=${UNSPLASH_ACCESS_KEY:-your_key}
-      - UNSPLASH_SECRET_KEY=${UNSPLASH_SECRET_KEY:-your_key}
-      - HOST=0.0.0.0
-      - PORT=7860
-      - LOG_LEVEL=INFO
+      - CORS_ALLOW_ALL=true
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # 前端开发服务 (生产环境应使用 nginx 托管构建产物)
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "5173:80"
+    depends_on:
+      - backend
+    environment:
+      - VITE_API_BASE_URL=http://backend:8000
     restart: unless-stopped

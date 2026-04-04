@@ -1,50 +1,9 @@
 <template>
   <div id="app">
     <a-layout style="min-height: 100vh">
-      <!-- <a-layout-header v-if="!isLandingRoute" class="app-header">
-        <div class="header-inner">
-          <div class="header-brand" @click="$router.push('/')">
-            <div class="brand-logo">
-              <span class="logo-icon"></span>
-              <div class="logo-ring"></div>
-            </div>
-            <div class="brand-text-group">
-              <span class="brand-text">{{ t('app.brand') }}</span>
-              <span class="brand-sub">{{ t('app.subBrand') }}</span>
-            </div>
-          </div>
-          <div class="header-right">
-            <a-select
-              v-model:value="locale"
-              class="lang-select"
-              size="small"
-              :aria-label="t('app.language.label')"
-            >
-              <a-select-option value="zh-CN">{{ t('app.language.zh') }}</a-select-option>
-              <a-select-option value="ja-JP">{{ t('app.language.ja') }}</a-select-option>
-              <a-select-option value="en-US">{{ t('app.language.en') }}</a-select-option>
-            </a-select>
-            <div class="header-badge">
-              <span class="badge-dot"></span>
-              <span>{{ t('app.badge') }}</span>
-            </div>
-          </div>
-        </div>
-      </a-layout-header> -->
       <a-layout-content style="padding: 0">
         <router-view />
       </a-layout-content>
-      <!-- <a-layout-footer v-if="!isLandingRoute" class="app-footer">
-        <div class="footer-inner">
-          <div class="footer-left">
-            <span class="footer-brand">{{ t('app.footerBrand') }}</span>
-            <span class="footer-copy">{{ t('app.footerCopy', { year }) }}</span>
-          </div>
-          <div class="footer-right">
-            <span class="footer-tech">{{ t('app.footerTech') }}</span>
-          </div>
-        </div>
-      </a-layout-footer> -->
     </a-layout>
   </div>
 </template>

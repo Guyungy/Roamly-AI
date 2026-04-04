@@ -1,13 +1,11 @@
 import axios from 'axios'
-import type { TripFormData, TripPlanResponse } from '@/types'
-import { i18n } from '@/i18n'
+import type { TripFormData, TripPlanResponse, TripChatRequest, TripChatResponse } from '@/types'
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000'
-const t = i18n.global.t
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? ''
 
 const apiClient = axios.create({
   baseURL: API_BASE_URL,
-  timeout: 0, // 无超时限制，等待后端返回结果
+  timeout: 30000,
   headers: {
     'Content-Type': 'application/json'
   }
@@ -41,68 +39,81 @@ apiClient.interceptors.response.use(
  * 提交旅行规划任务（立即返回 task_id）
  */
 export async function submitTripPlan(formData: TripFormData): Promise<{ task_id: string }> {
-  try {
-    const response = await apiClient.post('/api/trip/plan', formData)
-    return response.data
-  } catch (error: any) {
-    console.error('提交旅行计划失败:', error)
-    throw new Error(error.response?.data?.detail || error.message || t('api.submitTripPlanFailed'))
-  }
+  const response = await apiClient.post('/api/trip/plan', formData)
+  return response.data
 }
 
 /**
  * 轮询任务状态
  */
 export async function pollTaskStatus(taskId: string): Promise<any> {
-  try {
-    const response = await apiClient.get(`/api/trip/status/${taskId}`)
-    return response.data
-  } catch (error: any) {
-    console.error('查询任务状态失败:', error)
-    throw new Error(error.response?.data?.detail || error.message || t('api.queryTaskStatusFailed'))
-  }
+  const response = await apiClient.get(`/api/trip/status/${taskId}`)
+  return response.data
 }
 
+// 轮询配置
+const POLL_INTERVAL_MS = 3000
+const MAX_POLL_RETRIES = 60  // 最多轮询 60 次 = 3 分钟
+
 /**
- * 生成旅行计划（兼容旧接口，内部使用轮询）
+ * 生成旅行计划（提交 + 轮询，带超时保护）
  */
-export async function generateTripPlan(formData: TripFormData): Promise<TripPlanResponse> {
-  // 1. 提交任务
+export async function generateTripPlan(
+  formData: TripFormData,
+  onProgress?: (progress: string) => void
+): Promise<TripPlanResponse> {
   const { task_id } = await submitTripPlan(formData)
 
-  // 2. 轮询结果（每3秒）
   return new Promise((resolve, reject) => {
+    let retryCount = 0
+
     const interval = setInterval(async () => {
       try {
+        retryCount++
+
+        if (retryCount > MAX_POLL_RETRIES) {
+          clearInterval(interval)
+          reject(new Error('任务执行超时，请稍后重试'))
+          return
+        }
+
         const status = await pollTaskStatus(task_id)
+
         if (status.status === 'completed') {
           clearInterval(interval)
           resolve(status.result)
         } else if (status.status === 'failed') {
           clearInterval(interval)
-          reject(new Error(status.error || t('api.generateTripPlanFailed')))
+          reject(new Error(status.error || '旅行计划生成失败'))
+        } else if (status.status === 'processing') {
+          // 回调进度信息
+          onProgress?.(status.progress || '处理中...')
         }
-        // status === 'processing' → 继续轮询
-      } catch (err) {
-        clearInterval(interval)
-        reject(err)
+      } catch (err: any) {
+        // 网络错误不立即终止，允许重试
+        if (retryCount > MAX_POLL_RETRIES) {
+          clearInterval(interval)
+          reject(err)
+        }
       }
-    }, 3000)
+    }, POLL_INTERVAL_MS)
   })
+}
+
+/**
+ * AI 行程问答
+ */
+export async function chatWithTrip(request: TripChatRequest): Promise<TripChatResponse> {
+  const response = await apiClient.post('/api/chat/ask', request)
+  return response.data
 }
 
 /**
  * 健康检查
  */
 export async function healthCheck(): Promise<any> {
-  try {
-    const response = await apiClient.get('/health')
-    return response.data
-  } catch (error: any) {
-    console.error('健康检查失败:', error)
-    throw new Error(error.message || t('api.healthCheckFailed'))
-  }
+  const response = await apiClient.get('/health')
+  return response.data
 }
 
 export default apiClient
-

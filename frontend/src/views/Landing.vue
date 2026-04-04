@@ -237,6 +237,7 @@ import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { message } from 'ant-design-vue'
 import { generateTripPlan } from '@/services/api'
+import { useTripStore } from '@/stores/trip'
 import NavBar from '@/components/NavBar.vue'
 import type { TripFormData } from '@/types'
 import type { Dayjs } from 'dayjs'
@@ -248,6 +249,7 @@ type LandingFormData = Omit<TripFormData, 'start_date' | 'end_date'> & {
 
 const router = useRouter()
 const { t } = useI18n()
+const tripStore = useTripStore()
 
 const loading = ref(false)
 const loadingProgress = ref(0)
@@ -403,8 +405,7 @@ const handleSubmit = async () => {
     loadingStatus.value = t('home.loading.done')
 
     if (response.success && response.data) {
-      sessionStorage.setItem('tripPlan', JSON.stringify(response.data))
-      if (response.graph_data) sessionStorage.setItem('graphData', JSON.stringify(response.graph_data))
+      tripStore.setTripPlan(response.data, response.graph_data)
       message.success(t('home.messages.generateSuccess'))
       setTimeout(() => router.push('/result'), 500)
     } else {
@@ -995,5 +996,8 @@ const handleSubmit = async () => {
   .interest-group {
     grid-template-columns: repeat(2, 1fr);
   }
+}
+</style>
+
 }
 </style>
