@@ -27,6 +27,8 @@ export interface HistoryItem {
   tripPlan: TripPlan
   /** 知识图谱数据 */
   graphData?: KnowledgeGraphData | null
+  /** 前4个景点名（预计算，避免列表渲染时重复遍历） */
+  previewAttractions: string[]
 }
 
 function generateId(): string {
@@ -47,7 +49,7 @@ function loadHistory(): HistoryItem[] {
 
 function saveHistory(items: HistoryItem[]) {
   try {
-    uni.setStorageSync(STORAGE_KEY, JSON.stringify(items))
+    uni.setStorage({ key: STORAGE_KEY, data: JSON.stringify(items) })
   } catch (e) {
     console.warn('保存历史行程失败', e)
   }
@@ -61,6 +63,15 @@ export const useHistoryStore = defineStore('history', () => {
 
   /** 添加行程（最新在前） */
   function add(tripPlan: TripPlan, graphData?: KnowledgeGraphData | null) {
+    const names: string[] = []
+    for (const day of tripPlan.days || []) {
+      for (const attr of day.attractions || []) {
+        names.push(attr.name)
+        if (names.length >= 4) break
+      }
+      if (names.length >= 4) break
+    }
+
     const item: HistoryItem = {
       id: generateId(),
       city: tripPlan.city,
@@ -70,6 +81,7 @@ export const useHistoryStore = defineStore('history', () => {
       createdAt: Date.now(),
       tripPlan,
       graphData: graphData ?? null,
+      previewAttractions: names,
     }
     items.value.unshift(item)
     // 限制最大数量

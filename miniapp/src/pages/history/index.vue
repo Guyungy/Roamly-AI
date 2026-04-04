@@ -28,9 +28,9 @@
             </view>
 
             <!-- 景点预览 -->
-            <view class="card-preview" v-if="getPreviewAttractions(item).length > 0">
+            <view class="card-preview" v-if="(item.previewAttractions || []).length > 0">
               <wd-tag
-                v-for="name in getPreviewAttractions(item)"
+                v-for="name in (item.previewAttractions || [])"
                 :key="name"
                 round
                 plain
@@ -100,18 +100,6 @@ function confirmDelete(id: string) {
       }
     }
   })
-}
-
-function getPreviewAttractions(item: HistoryItem): string[] {
-  if (!item.tripPlan?.days) return []
-  const names: string[] = []
-  for (const day of item.tripPlan.days) {
-    for (const attr of day.attractions) {
-      names.push(attr.name)
-      if (names.length >= 4) return names
-    }
-  }
-  return names
 }
 
 function goToPlanning() {

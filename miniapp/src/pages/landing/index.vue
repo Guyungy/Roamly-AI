@@ -52,7 +52,7 @@
         <view class="date-row">
           <view class="date-item">
             <text class="picker-label">出发日期</text>
-            <picker mode="date" :value="formData.start_date" @change="onStartDateChange">
+            <picker mode="date" :value="formData.start_date" :start="todayStr" @change="onStartDateChange">
               <view class="native-picker-inner">
                 <text :class="formData.start_date ? 'val' : 'ph'">
                   {{ formData.start_date || '选择日期' }}
@@ -191,7 +191,7 @@
 
 <script setup lang="ts">
 import { reactive, computed, ref } from 'vue'
-import { onShow } from '@dcloudio/uni-app'
+import { onShow, onUnload } from '@dcloudio/uni-app'
 import LoadingOverlay from '@/components/LoadingOverlay.vue'
 import QuotaWall from '@/components/QuotaWall.vue'
 import { useTripStore } from '@/stores/trip'
@@ -204,9 +204,19 @@ const tripStore = useTripStore()
 const quotaStore = useQuotaStore()
 const historyStore = useHistoryStore()
 const showQuotaWall = ref(false)
+const pollTask = ref<{ cancel: () => void } | null>(null)
+
+const todayStr = computed(() => {
+  const d = new Date()
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
+})
 
 onShow(() => {
   quotaStore.ensureToday()
+})
+
+onUnload(() => {
+  pollTask.value?.cancel()
 })
 
 function goToProfile() {
@@ -306,9 +316,11 @@ async function handleSubmit() {
       free_text_input: formData.free_text_input,
     }
 
-    const response = await generateTripPlan(submitData, (progress) => {
+    const task = generateTripPlan(submitData, (progress) => {
       tripStore.setProgress(progress)
     })
+    pollTask.value = task
+    const response = await task.promise
 
     if (response.success && response.data) {
       // 扣减次数

@@ -109,6 +109,7 @@
 
 <script setup lang="ts">
 import { ref, computed, nextTick } from 'vue'
+import { onShareAppMessage } from '@dcloudio/uni-app'
 import { useTripStore } from '@/stores/trip'
 import { chatWithTrip } from '@/services/api'
 import type { ChatMessage } from '@/types'
@@ -185,6 +186,11 @@ function handleSend() {
     sendMessage()
   }
 }
+
+onShareAppMessage(() => ({
+  title: '出门啦 - AI帮你规划旅行',
+  path: '/pages/landing/index'
+}))
 </script>
 
 <style scoped>

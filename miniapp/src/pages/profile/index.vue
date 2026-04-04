@@ -95,7 +95,7 @@
     </view>
 
     <wd-card class="stats-card">
-      <wd-grid :column="3" border={false}>
+      <wd-grid :column="3" :border="false">
         <wd-grid-item>
           <view class="stat-item">
             <view class="stat-value">{{ historyStore.count }}</view>
@@ -120,6 +120,7 @@
     <!-- 其他操作 -->
     <view class="menu-section">
       <wd-cell-group border>
+        <wd-cell title="意见反馈" icon="chat" is-link @click="submitFeedback" />
         <wd-cell title="清空所有行程" is-link icon="delete" @click="clearHistory" />
         <wd-cell title="关于出门啦" is-link icon="info-circle" @click="showAbout" />
       </wd-cell-group>
@@ -216,6 +217,43 @@ function clearHistory() {
       if (res.confirm) {
         historyStore.clearAll()
         uni.showToast({ title: '已清空', icon: 'success' })
+      }
+    }
+  })
+}
+
+function submitFeedback() {
+  // #ifdef MP-WEIXIN
+  // 微信小程序内置反馈入口
+  if (wx.openCustomerServiceChat) {
+    wx.openCustomerServiceChat({
+      extInfo: { url: '' },
+      corpId: '',
+      fail: () => {
+        uni.showModal({
+          title: '意见反馈',
+          editable: true,
+          placeholderText: '请输入你的建议或问题...',
+          confirmColor: '#FF6B35',
+          success: (res: any) => {
+            if (res.confirm && res.content) {
+              uni.showToast({ title: '感谢反馈！', icon: 'success' })
+            }
+          }
+        })
+      }
+    })
+    return
+  }
+  // #endif
+  uni.showModal({
+    title: '意见反馈',
+    editable: true,
+    placeholderText: '请输入你的建议或问题...',
+    confirmColor: '#FF6B35',
+    success: (res: any) => {
+      if (res.confirm && res.content) {
+        uni.showToast({ title: '感谢反馈！', icon: 'success' })
       }
     }
   })

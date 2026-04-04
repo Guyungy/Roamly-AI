@@ -151,7 +151,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { onShow } from '@dcloudio/uni-app'
+import { onShow, onUnload } from '@dcloudio/uni-app'
 import NavBar from '@/components/NavBar.vue'
 import LoadingOverlay from '@/components/LoadingOverlay.vue'
 import QuotaWall from '@/components/QuotaWall.vue'
@@ -171,9 +171,14 @@ const selectedDuration = ref<'half' | 'full'>('half')
 const selectedCategories = ref<string[]>([])
 const extraText = ref('')
 const showQuotaWall = ref(false)
+const pollTask = ref<{ cancel: () => void } | null>(null)
 
 onShow(() => {
   quotaStore.ensureToday()
+})
+
+onUnload(() => {
+  pollTask.value?.cancel()
 })
 
 onMounted(() => {
@@ -263,19 +268,22 @@ async function getLocation() {
   locating.value = true
   try {
     // 1. 获取经纬度（小程序原生接口，gcj02 坐标系）
-    const locationRes: any = await new Promise((resolve, reject) => {
-      uni.getLocation({
-        type: 'gcj02',
-        success: resolve,
-        fail: (err: any) => {
-          // 用户拒绝授权 → 引导打开设置
-          if (err.errMsg?.includes('deny') || err.errMsg?.includes('auth')) {
-            promptOpenSettings()
-          }
-          reject(err)
-        },
-      })
-    })
+    const locationRes: any = await Promise.race([
+      new Promise((resolve, reject) => {
+        uni.getLocation({
+          type: 'gcj02',
+          success: resolve,
+          fail: (err: any) => {
+            // 用户拒绝授权 → 引导打开设置
+            if (err.errMsg?.includes('deny') || err.errMsg?.includes('auth')) {
+              promptOpenSettings()
+            }
+            reject(err)
+          },
+        })
+      }),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('定位超时')), 10000))
+    ])
 
     // 2. 通过后端 API 逆地理编码（Key 安全存放在后端）
     try {
@@ -389,9 +397,11 @@ async function handleSubmit() {
       free_text_input: freeText,
     }
 
-    const response = await generateTripPlan(submitData, (progress) => {
+    const task = generateTripPlan(submitData, (progress) => {
       tripStore.setProgress(progress)
     })
+    pollTask.value = task
+    const response = await task.promise
 
     if (response.success && response.data) {
       quotaStore.consume()

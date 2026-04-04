@@ -63,22 +63,39 @@ export async function pollTaskStatus(taskId: string): Promise<any> {
 const POLL_INTERVAL_MS = 3000
 const MAX_POLL_RETRIES = 60
 
+export interface TripPlanTask {
+  promise: Promise<TripPlanResponse>
+  cancel: () => void
+}
+
 /**
- * 生成旅行计划（提交 + 轮询，带超时保护）
+ * 生成旅行计划（提交 + 轮询，带超时和取消支持）
  */
 export function generateTripPlan(
   formData: TripFormData,
   onProgress?: (progress: string) => void
-): Promise<TripPlanResponse> {
-  return new Promise(async (resolve, reject) => {
+): TripPlanTask {
+  let cancelled = false
+  let timer: ReturnType<typeof setTimeout> | null = null
+
+  const cancel = () => {
+    cancelled = true
+    if (timer) clearTimeout(timer)
+  }
+
+  const promise = new Promise<TripPlanResponse>(async (resolve, reject) => {
     try {
       const { task_id } = await submitTripPlan(formData)
       let retryCount = 0
 
       const poll = async () => {
+        if (cancelled) {
+          reject(new Error('已取消'))
+          return
+        }
+
         try {
           retryCount++
-
           if (retryCount > MAX_POLL_RETRIES) {
             reject(new Error('任务执行超时，请稍后重试'))
             return
@@ -86,28 +103,33 @@ export function generateTripPlan(
 
           const status = await pollTaskStatus(task_id)
 
+          if (cancelled) return
+
           if (status.status === 'completed') {
             resolve(status.result)
           } else if (status.status === 'failed') {
             reject(new Error(status.error || '旅行计划生成失败'))
           } else {
             onProgress?.(status.progress || '处理中...')
-            setTimeout(poll, POLL_INTERVAL_MS)
+            timer = setTimeout(poll, POLL_INTERVAL_MS)
           }
         } catch (err: any) {
+          if (cancelled) return
           if (retryCount > MAX_POLL_RETRIES) {
             reject(err)
           } else {
-            setTimeout(poll, POLL_INTERVAL_MS)
+            timer = setTimeout(poll, POLL_INTERVAL_MS)
           }
         }
       }
 
-      setTimeout(poll, POLL_INTERVAL_MS)
+      timer = setTimeout(poll, POLL_INTERVAL_MS)
     } catch (err) {
       reject(err)
     }
   })
+
+  return { promise, cancel }
 }
 
 /**

@@ -17,6 +17,11 @@
             {{ tripPlan!.overall_suggestions }}
           </view>
         </view>
+        <view class="action-bar">
+          <wd-button size="small" plain round @click="shareTrip">
+            分享行程
+          </wd-button>
+        </view>
       </wd-card>
 
       <!-- Tab 切换 -->
@@ -56,18 +61,10 @@
               <!-- 地图 -->
               <template v-if="tab.key === 'map'">
                 <view class="map-section">
-                  <map
-                    id="trip-map"
-                    class="trip-map"
-                    :latitude="mapCenter.latitude"
-                    :longitude="mapCenter.longitude"
-                    :scale="12"
-                    :markers="mapMarkers"
-                    :polyline="mapPolyline"
-                    show-compass
-                    enable-zoom
-                    enable-scroll
-                  />
+                  <map v-if="mapMarkers.length > 0" id="trip-map" class="trip-map" :latitude="mapCenter.latitude" :longitude="mapCenter.longitude" :scale="12" :markers="mapMarkers" :polyline="mapPolyline" show-compass enable-zoom enable-scroll />
+                  <view v-if="mapMarkers.length === 0" class="map-empty">
+                    <wd-status-tip image="content" tip="暂无景点坐标数据" />
+                  </view>
                 </view>
               </template>
             </view>
@@ -98,6 +95,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+import { onShareAppMessage } from '@dcloudio/uni-app'
 import DayCard from '@/components/DayCard.vue'
 import BudgetPanel from '@/components/BudgetPanel.vue'
 import WeatherCard from '@/components/WeatherCard.vue'
@@ -128,11 +126,13 @@ const currentWeather = computed(() => {
 // 地图数据
 const mapCenter = computed(() => {
   if (!tripPlan.value?.days?.length) return { latitude: 39.9, longitude: 116.4 }
-  const allAttractions = tripPlan.value.days.flatMap(d => d.attractions)
-  if (allAttractions.length === 0) return { latitude: 39.9, longitude: 116.4 }
-  const avgLat = allAttractions.reduce((s, a) => s + (a.location?.latitude || 0), 0) / allAttractions.length
-  const avgLng = allAttractions.reduce((s, a) => s + (a.location?.longitude || 0), 0) / allAttractions.length
-  return { latitude: avgLat || 39.9, longitude: avgLng || 116.4 }
+  const validAttractions = tripPlan.value.days
+    .flatMap(d => d.attractions)
+    .filter(a => a.location?.latitude && a.location?.longitude && a.location.latitude !== 0 && a.location.longitude !== 0)
+  if (validAttractions.length === 0) return { latitude: 39.9, longitude: 116.4 }
+  const avgLat = validAttractions.reduce((s, a) => s + a.location!.latitude, 0) / validAttractions.length
+  const avgLng = validAttractions.reduce((s, a) => s + a.location!.longitude, 0) / validAttractions.length
+  return { latitude: avgLat, longitude: avgLng }
 })
 
 const mapMarkers = computed(() => {
@@ -193,15 +193,24 @@ const mapPolyline = computed(() => {
 async function loadAttractionImages() {
   if (!tripPlan.value) return
   const city = tripPlan.value.city
+  const tasks: Promise<void>[] = []
+
   for (const day of tripPlan.value.days) {
     for (const attr of day.attractions) {
       if (!attractionImages.value[attr.name]) {
-        const url = await getAttractionPhoto(attr.name, city)
-        if (url) {
-          attractionImages.value[attr.name] = url
-        }
+        tasks.push(
+          getAttractionPhoto(attr.name, city).then(url => {
+            if (url) attractionImages.value[attr.name] = url
+          })
+        )
       }
     }
+  }
+
+  // 最多 5 个并行
+  const BATCH = 5
+  for (let i = 0; i < tasks.length; i += BATCH) {
+    await Promise.allSettled(tasks.slice(i, i + BATCH))
   }
 }
 
@@ -220,6 +229,21 @@ function goToLanding() {
 onMounted(() => {
   if (tripStore.hasTripPlan) {
     loadAttractionImages()
+  }
+})
+
+function shareTrip() {
+  // #ifdef MP-WEIXIN
+  // Trigger native share
+  // #endif
+  uni.showToast({ title: '长按页面可分享给好友', icon: 'none' })
+}
+
+onShareAppMessage(() => {
+  const city = tripPlan.value?.city || '旅行'
+  return {
+    title: `出门啦 - ${city}行程规划`,
+    path: '/pages/landing/index'
   }
 })
 </script>
@@ -266,6 +290,12 @@ onMounted(() => {
   line-height: 1.6;
 }
 
+.action-bar {
+  margin-top: 32rpx;
+  display: flex;
+  justify-content: center;
+}
+
 .tabs-container {
   margin-top: 12rpx;
 }
@@ -282,6 +312,13 @@ onMounted(() => {
 .trip-map {
   width: 100%;
   height: calc(100vh - 500rpx);
+}
+
+.map-empty {
+  height: 400rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .fab-btn {
