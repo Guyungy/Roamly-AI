@@ -23,10 +23,18 @@
     </view>
     <scroll-view v-if="list.length > 1" scroll-x class="weather-scroll">
       <view class="weather-day-list">
-        <view v-for="(item, index) in list" :key="item.date" class="weather-day-item" :class="{ 'is-active': index === activeIndex }" @tap="$emit('select', index)">
-          <text class="wd-weekday">{{ formatW(item.date, true) }}</text>
-          <text class="wd-emoji">{{ getEmoji(item.day_weather) }}</text>
-          <text class="wd-temp">{{ formatT(item.day_temp) }}</text>
+        <view v-for="(item, index) in list" :key="item.date" class="weather-day-item" @tap="$emit('select', index)">
+          <wd-tag
+            round
+            custom-style="padding: 16rpx 24rpx; height: auto; display: flex; flex-direction: column; align-items: center; gap: 8rpx;"
+            :type="index === activeIndex ? 'primary' : 'default'"
+            :plain="index !== activeIndex"
+            :color="index === activeIndex ? '#FF6B35' : ''"
+          >
+             <text class="wd-weekday" :style="{ color: index === activeIndex ? '#FFFFFF' : '#9CA3AF' }">{{ formatW(item.date, true) }}</text>
+             <text class="wd-emoji">{{ getEmoji(item.day_weather) }}</text>
+             <text class="wd-temp" :style="{ color: index === activeIndex ? '#FFFFFF' : '#1A1A2E' }">{{ formatT(item.day_temp) }}</text>
+          </wd-tag>
         </view>
       </view>
     </scroll-view>
@@ -69,18 +77,9 @@ function getGradient(weatherText: string): string {
 .detail-item { display: flex; gap: 12rpx; align-items: center; }
 .detail-label { font-size: 22rpx; color: #9CA3AF; width: 60rpx; }
 .detail-value { font-size: 24rpx; color: #6B7280; }
-.weather-scroll { white-space: nowrap; }
+.weather-scroll { white-space: nowrap; padding: 10rpx 0; }
 .weather-day-list { display: inline-flex; gap: 16rpx; padding: 8rpx 0; }
-.weather-day-item {
-  display: inline-flex; flex-direction: column; align-items: center; gap: 12rpx;
-  padding: 20rpx 24rpx; border-radius: 20rpx;
-  background: #FFFFFF; border: 1rpx solid #E8ECF2; min-width: 120rpx;
-  box-shadow: 0 2rpx 8rpx rgba(0,0,0,0.03);
-}
-.weather-day-item.is-active { background: #FFF0E8; border-color: rgba(255, 107, 53, 0.2); }
-.wd-weekday { font-size: 22rpx; color: #9CA3AF; }
-.weather-day-item.is-active .wd-weekday { color: #FF6B35; }
+.wd-weekday { font-size: 22rpx; }
 .wd-emoji { font-size: 40rpx; }
-.wd-temp { font-size: 26rpx; font-weight: 600; color: #1A1A2E; }
-.weather-day-item.is-active .wd-temp { color: #FF6B35; }
+.wd-temp { font-size: 26rpx; font-weight: 600; }
 </style>

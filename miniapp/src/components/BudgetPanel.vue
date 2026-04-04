@@ -1,21 +1,24 @@
 <template>
   <view class="budget-panel">
-    <view class="budget-total-card">
-      <text class="budget-title">预算概览</text>
-      <view class="budget-total-row">
-        <text class="budget-currency">¥</text>
-        <text class="budget-total-value">{{ formatAmount(budget.total) }}</text>
+    <wd-card custom-class="budget-total-card">
+      <view class="total-content">
+        <text class="budget-title">预算概览</text>
+        <view class="budget-total-row">
+          <text class="budget-currency">¥</text>
+          <text class="budget-total-value">{{ formatAmount(budget.total) }}</text>
+        </view>
       </view>
-    </view>
-    <view class="budget-grid">
-      <view class="budget-grid-item" v-for="item in categoryItems" :key="item.key">
+    </wd-card>
+
+    <wd-grid :column="2" :border="false" custom-style="margin-top: 24rpx;">
+      <wd-grid-item v-for="item in categoryItems" :key="item.key" use-slot>
         <view class="grid-item-inner">
           <text class="grid-icon">{{ item.icon }}</text>
           <text class="grid-amount">¥{{ formatAmount(item.amount) }}</text>
           <text class="grid-label">{{ item.label }}</text>
         </view>
-      </view>
-    </view>
+      </wd-grid-item>
+    </wd-grid>
   </view>
 </template>
 
@@ -35,27 +38,24 @@ const categoryItems = computed(() => [
 
 <style scoped>
 .budget-total-card {
-  padding: 40rpx; text-align: center; margin-bottom: 24rpx;
-  background: linear-gradient(135deg, #FFF0E8, #FFF8E8);
-  border: 1rpx solid rgba(255, 107, 53, 0.1);
-  border-radius: 32rpx;
-  box-shadow: 0 4rpx 20rpx rgba(255, 107, 53, 0.05);
+  background: linear-gradient(135deg, #FFF0E8, #FFF8E8) !important;
+  border: 1rpx solid rgba(255, 107, 53, 0.1) !important;
+  text-align: center;
 }
+.total-content { padding: 20rpx 0; }
 .budget-title { font-size: 26rpx; color: #6B7280; letter-spacing: 4rpx; display: block; margin-bottom: 16rpx; }
 .budget-total-row { display: flex; align-items: baseline; justify-content: center; gap: 8rpx; }
 .budget-currency { font-size: 36rpx; color: #FF6B35; font-weight: 600; }
 .budget-total-value { font-size: 72rpx; font-weight: 800; color: #FF6B35; line-height: 1; }
-.budget-grid { display: flex; flex-wrap: wrap; gap: 16rpx; }
-.budget-grid-item { width: calc(50% - 8rpx); }
 .grid-item-inner {
-  padding: 28rpx;
+  padding: 24rpx;
   text-align: center;
   background: #FFFFFF;
   border-radius: 24rpx;
-  border: 1rpx solid #E8ECF2;
-  box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.04);
+  width: 100%;
 }
 .grid-icon { font-size: 44rpx; display: block; margin-bottom: 12rpx; }
 .grid-amount { font-size: 34rpx; font-weight: 700; color: #1A1A2E; display: block; margin-bottom: 8rpx; }
 .grid-label { font-size: 22rpx; color: #9CA3AF; }
+:deep(.wd-grid-item__content) { background: transparent !important; padding: 10rpx !important; }
 </style>

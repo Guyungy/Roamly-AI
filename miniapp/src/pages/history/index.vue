@@ -1,68 +1,75 @@
 <template>
   <view class="history-page">
-    <NavBar />
+    <wd-navbar title="我的行程" fixed placeholder />
 
-    <!-- 头部 -->
-    <view class="page-header">
-      <text class="page-title">我的行程</text>
-      <text class="page-count" v-if="!historyStore.isEmpty">共 {{ historyStore.count }} 个</text>
+    <!-- 头部统计 -->
+    <view class="page-header" v-if="!historyStore.isEmpty">
+      <view class="page-title">我的探索</view>
+      <wd-badge :value="historyStore.count" type="primary" class="page-count-badge" />
     </view>
 
     <!-- 行程列表 -->
     <view v-if="!historyStore.isEmpty" class="history-list">
-      <view
-        v-for="item in historyStore.items"
-        :key="item.id"
-        class="trip-card"
-        @tap="openTrip(item)"
-      >
-        <!-- 城市头部 -->
-        <view class="card-top">
-          <view class="city-row">
-            <text class="card-city">{{ item.city }}</text>
-            <text class="card-days-tag">{{ item.days }}天{{ item.days - 1 }}晚</text>
-          </view>
-          <view class="card-delete" @tap.stop="confirmDelete(item.id)">
-            <text class="delete-x">×</text>
-          </view>
-        </view>
+      <view v-for="item in historyStore.items" :key="item.id" class="swipe-container">
+        <wd-swipe-action>
+          <wd-card class="trip-card" @click="openTrip(item)">
+            <template #title>
+              <view class="card-title-row">
+                <text class="card-city">{{ item.city }}</text>
+                <wd-tag type="primary" plain size="small" class="card-days-tag">
+                  {{ item.days }}天{{ item.days - 1 }}晚
+                </wd-tag>
+              </view>
+            </template>
 
-        <!-- 日期 -->
-        <view class="card-date-row">
-          <text class="card-date-icon">📅</text>
-          <text class="card-date">{{ item.startDate }} — {{ item.endDate }}</text>
-        </view>
+            <view class="card-date-row">
+              <wd-icon name="calendar" size="28rpx" color="#9CA3AF" />
+              <text class="card-date">{{ item.startDate }} — {{ item.endDate }}</text>
+            </view>
 
-        <!-- 景点预览 -->
-        <view class="card-preview" v-if="getPreviewAttractions(item).length > 0">
-          <text
-            v-for="name in getPreviewAttractions(item)"
-            :key="name"
-            class="preview-tag"
-          >{{ name }}</text>
-        </view>
+            <!-- 景点预览 -->
+            <view class="card-preview" v-if="getPreviewAttractions(item).length > 0">
+              <wd-tag
+                v-for="name in getPreviewAttractions(item)"
+                :key="name"
+                round
+                plain
+                class="preview-tag"
+              >
+                {{ name }}
+              </wd-tag>
+            </view>
 
-        <!-- 底部 -->
-        <view class="card-footer">
-          <text class="card-time">{{ formatTime(item.createdAt) }} 创建</text>
-          <view class="card-action">
-            <text class="action-text">查看详情</text>
-            <text class="action-arrow">›</text>
-          </view>
-        </view>
+            <template #footer>
+              <view class="card-footer">
+                <text class="card-time">{{ formatTime(item.createdAt) }} 创建</text>
+                <view class="card-action">
+                  <text class="action-text">查看详情</text>
+                  <wd-icon name="arrow-right" size="24rpx" color="#FF6B35" />
+                </view>
+              </view>
+            </template>
+          </wd-card>
+
+          <template #right>
+            <view class="delete-btn" @tap.stop="confirmDelete(item.id)">
+              <wd-icon name="delete" size="40rpx" color="#FFFFFF" />
+              <text class="delete-text">删除</text>
+            </view>
+          </template>
+        </wd-swipe-action>
       </view>
     </view>
 
     <!-- 空状态 -->
     <view v-else class="empty-state">
-      <view class="empty-icon-wrap">
-        <text class="empty-icon">🗺️</text>
+      <wd-status-tip image="search" tip="还没有旅行计划" />
+      <view class="empty-desc">去首页创建你的第一个 AI 旅行计划吧</view>
+      <view class="empty-action">
+        <wd-button type="primary" round block @click="goToPlanning">
+          ✦ 开始规划
+        </wd-button>
       </view>
-      <text class="empty-title">还没有旅行计划</text>
-      <text class="empty-desc">去首页创建你的第一个 AI 旅行计划吧</text>
-      <button class="empty-btn" @tap="goToPlanning">
-        <text class="empty-btn-text">✦ 开始规划</text>
-      </button>
     </view>
 
     <view class="safe-area-bottom" />
@@ -70,7 +77,6 @@
 </template>
 
 <script setup lang="ts">
-import NavBar from '@/components/NavBar.vue'
 import { useHistoryStore, type HistoryItem } from '@/stores/history'
 import { useTripStore } from '@/stores/trip'
 
@@ -130,93 +136,51 @@ function formatTime(ts: number): string {
 
 .page-header {
   display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  padding: 32rpx 40rpx 24rpx;
+  align-items: center;
+  padding: 32rpx 32rpx 16rpx;
+  gap: 16rpx;
 }
 
 .page-title {
-  font-size: 40rpx;
+  font-size: 36rpx;
   font-weight: 800;
   color: #1A1A2E;
 }
 
-.page-count {
-  font-size: 24rpx;
-  color: #9CA3AF;
-}
-
 /* Card */
 .history-list {
-  padding: 0 32rpx;
+  padding: 0 24rpx;
+}
+
+.swipe-container {
+  margin-bottom: 24rpx;
+  border-radius: 24rpx;
+  overflow: hidden;
 }
 
 .trip-card {
-  padding: 32rpx;
-  margin-bottom: 24rpx;
-  background-color: #FFFFFF;
-  border-radius: 24rpx;
-  border: 1rpx solid #E8ECF2;
-  box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.02);
-  transition: all 0.2s;
+  margin: 0 !important;
+  border: none !important;
 }
 
-.trip-card:active {
-  background-color: #F9FAFB;
-  transform: translateY(2rpx);
-}
-
-.card-top {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  margin-bottom: 16rpx;
-}
-
-.city-row {
+.card-title-row {
   display: flex;
   align-items: center;
   gap: 16rpx;
 }
 
 .card-city {
-  font-size: 36rpx;
+  font-size: 34rpx;
   font-weight: 800;
-  color: #FF6B35;
-}
-
-.card-days-tag {
-  font-size: 22rpx;
-  color: #FF6B35;
-  padding: 4rpx 12rpx;
-  background-color: rgba(255, 107, 53, 0.08);
-  border-radius: 8rpx;
-}
-
-.card-delete {
-  width: 52rpx;
-  height: 52rpx;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 50%;
-  background-color: #F5F6FA;
-}
-
-.delete-x {
-  font-size: 32rpx;
-  color: #9CA3AF;
+  color: #1A1A2E;
 }
 
 .card-date-row {
   display: flex;
   align-items: center;
-  gap: 10rpx;
-  margin-bottom: 20rpx;
-}
-
-.card-date-icon {
-  font-size: 24rpx;
+  gap: 8rpx;
+  margin-top: 12rpx;
+  margin-bottom: 24rpx;
 }
 
 .card-date {
@@ -228,24 +192,18 @@ function formatTime(ts: number): string {
   display: flex;
   flex-wrap: wrap;
   gap: 12rpx;
-  margin-bottom: 24rpx;
 }
 
 .preview-tag {
-  font-size: 22rpx;
-  color: #6B7280;
-  padding: 6rpx 18rpx;
-  border-radius: 999rpx;
-  background-color: #F5F6FA;
-  border: 1rpx solid #E8ECF2;
+  color: #6B7280 !important;
+  background-color: #F5F6FA !important;
+  border-color: #E8ECF2 !important;
 }
 
 .card-footer {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding-top: 20rpx;
-  border-top: 1rpx solid #F5F6FA;
 }
 
 .card-time {
@@ -265,9 +223,20 @@ function formatTime(ts: number): string {
   font-weight: 600;
 }
 
-.action-arrow {
-  font-size: 28rpx;
-  color: #FF6B35;
+.delete-btn {
+  height: 100%;
+  width: 140rpx;
+  background-color: #fa4350;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: #FFFFFF;
+}
+
+.delete-text {
+  font-size: 24rpx;
+  margin-top: 8rpx;
 }
 
 /* Empty */
@@ -275,51 +244,16 @@ function formatTime(ts: number): string {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 160rpx 60rpx;
-}
-
-.empty-icon-wrap {
-  width: 160rpx;
-  height: 160rpx;
-  border-radius: 50%;
-  background-color: #FFFFFF;
-  border: 1rpx solid #E8ECF2;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-bottom: 32rpx;
-  box-shadow: 0 8rpx 24rpx rgba(0, 0, 0, 0.03);
-}
-
-.empty-icon {
-  font-size: 64rpx;
-}
-
-.empty-title {
-  font-size: 34rpx;
-  font-weight: 700;
-  color: #1A1A2E;
-  margin-bottom: 12rpx;
+  padding-top: 160rpx;
 }
 
 .empty-desc {
   font-size: 26rpx;
   color: #9CA3AF;
-  margin-bottom: 48rpx;
+  margin: 24rpx 0 48rpx;
 }
 
-.empty-btn {
-  background: linear-gradient(135deg, #FF6B35 0%, #FFB830 100%);
-  border: none;
-  border-radius: 999rpx;
-  padding: 24rpx 64rpx;
-  box-shadow: 0 8rpx 32rpx rgba(255, 107, 53, 0.3);
-}
-
-.empty-btn-text {
-  font-size: 30rpx;
-  font-weight: 700;
-  color: #FFFFFF;
-  letter-spacing: 2rpx;
+.empty-action {
+  width: 320rpx;
 }
 </style>

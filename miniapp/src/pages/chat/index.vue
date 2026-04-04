@@ -1,6 +1,6 @@
 <template>
   <view class="chat-page">
-    <NavBar show-back />
+    <wd-navbar title="出门啦 AI" left-arrow @click-left="goBack" fixed placeholder />
 
     <!-- 消息区域 -->
     <scroll-view
@@ -11,28 +11,33 @@
     >
       <!-- 欢迎消息 -->
       <view class="welcome-section" v-if="messages.length === 0">
-        <view class="welcome-card">
-          <text class="welcome-emoji">🎒</text>
-          <text class="welcome-title">出门啦 AI</text>
-          <text class="welcome-desc" v-if="tripStore.hasTripPlan">
-            你好！我已经了解了你的{{ tripStore.tripPlan?.city }}旅行计划，关于行程有任何疑问都可以问我哦~
-          </text>
-          <text class="welcome-desc" v-else>
-            你好！请先在首页创建旅行计划，我就能回答关于行程的问题啦~
-          </text>
+        <wd-card class="welcome-card">
+          <view class="welcome-content">
+            <text class="welcome-emoji">🎒</text>
+            <view class="welcome-title">出门啦 AI</view>
+            <view class="welcome-desc" v-if="tripStore.hasTripPlan">
+              你好！我已经了解了你的{{ tripStore.tripPlan?.city }}旅行计划，关于行程有任何疑问都可以问我哦~
+            </view>
+            <view class="welcome-desc" v-else>
+              你好！请先在首页创建旅行计划，我就能回答关于行程的问题啦~
+            </view>
 
-          <!-- 快捷问题 -->
-          <view v-if="tripStore.hasTripPlan" class="quick-questions">
-            <view
-              v-for="q in quickQuestions"
-              :key="q"
-              class="quick-item"
-              @tap="sendMessage(q)"
-            >
-              <text class="quick-text">{{ q }}</text>
+            <!-- 快捷问题 -->
+            <view v-if="tripStore.hasTripPlan" class="quick-questions">
+              <wd-tag
+                v-for="q in quickQuestions"
+                :key="q"
+                round
+                plain
+                type="primary"
+                class="quick-item"
+                @click="sendMessage(q)"
+              >
+                {{ q }}
+              </wd-tag>
             </view>
           </view>
-        </view>
+        </wd-card>
       </view>
 
       <!-- 消息列表 -->
@@ -67,11 +72,7 @@
             <text class="avatar-icon">🎒</text>
           </view>
           <view class="bubble-content assistant typing-bubble">
-            <view class="typing-dots">
-              <view class="typing-dot" />
-              <view class="typing-dot" />
-              <view class="typing-dot" />
-            </view>
+            <wd-loading size="24rpx" color="#FF6B35" />
           </view>
         </view>
       </view>
@@ -83,22 +84,24 @@
     <!-- 输入区域 -->
     <view class="chat-input-area safe-area-bottom">
       <view class="input-row">
-        <input
+        <wd-input
           class="chat-input"
           v-model="inputText"
           placeholder="有什么想问的？"
-          placeholder-class="input-placeholder"
+          no-border
+          clearable
           confirm-type="send"
           :disabled="loading || !tripStore.hasTripPlan"
           @confirm="handleSend"
         />
-        <view
-          class="send-btn"
-          :class="{ 'send-disabled': !canSend }"
-          @tap="handleSend"
-        >
-          <text class="send-icon">↑</text>
-        </view>
+        <wd-button
+          type="primary"
+          round
+          icon="send"
+          size="small"
+          :disabled="!canSend"
+          @click="handleSend"
+        />
       </view>
     </view>
   </view>
@@ -106,7 +109,6 @@
 
 <script setup lang="ts">
 import { ref, computed, nextTick } from 'vue'
-import NavBar from '@/components/NavBar.vue'
 import { useTripStore } from '@/stores/trip'
 import { chatWithTrip } from '@/services/api'
 import type { ChatMessage } from '@/types'
@@ -128,6 +130,10 @@ const quickQuestions = [
 const canSend = computed(() => {
   return inputText.value.trim() && !loading.value && tripStore.hasTripPlan
 })
+
+function goBack() {
+  uni.navigateBack()
+}
 
 function scrollToBottom() {
   nextTick(() => {
@@ -192,27 +198,22 @@ function handleSend() {
 /* Messages area */
 .chat-messages {
   flex: 1;
-  padding: 32rpx;
+  padding: 24rpx;
   box-sizing: border-box;
 }
 
 /* Welcome */
 .welcome-section {
-  padding: 40rpx 0;
+  padding: 24rpx 0;
 }
 
-.welcome-card {
-  background-color: #FFFFFF;
-  border-radius: 40rpx;
-  padding: 60rpx 40rpx;
+.welcome-content {
   text-align: center;
-  box-shadow: 0 4rpx 20rpx rgba(0, 0, 0, 0.03);
-  border: 1rpx solid #E8ECF2;
+  padding: 24rpx 0;
 }
 
 .welcome-emoji {
   font-size: 80rpx;
-  display: block;
   margin-bottom: 24rpx;
 }
 
@@ -220,17 +221,15 @@ function handleSend() {
   font-size: 40rpx;
   font-weight: 800;
   color: #1A1A2E;
-  display: block;
   margin-bottom: 20rpx;
 }
 
 .welcome-desc {
   font-size: 28rpx;
   color: #6B7280;
-  display: block;
   line-height: 1.6;
   margin-bottom: 40rpx;
-  padding: 0 20rpx;
+  padding: 0 40rpx;
 }
 
 .quick-questions {
@@ -241,20 +240,7 @@ function handleSend() {
 }
 
 .quick-item {
-  padding: 16rpx 32rpx;
-  border-radius: 999rpx;
-  background-color: #FFF5F0;
-  border: 1rpx solid #FFE4D6;
-}
-
-.quick-item:active {
-  background-color: #FFE4D6;
-}
-
-.quick-text {
-  font-size: 24rpx;
-  color: #FF6B35;
-  font-weight: 600;
+  margin-bottom: 8rpx;
 }
 
 /* Message bubbles */
@@ -297,8 +283,8 @@ function handleSend() {
 
 .bubble-content {
   max-width: 70%;
-  padding: 24rpx 32rpx;
-  border-radius: 32rpx;
+  padding: 20rpx 28rpx;
+  border-radius: 28rpx;
   position: relative;
 }
 
@@ -316,8 +302,9 @@ function handleSend() {
 }
 
 .bubble-text {
-  font-size: 30rpx;
+  font-size: 28rpx;
   line-height: 1.6;
+  word-break: break-all;
 }
 
 .assistant .bubble-text {
@@ -331,28 +318,10 @@ function handleSend() {
 
 /* Typing animation */
 .typing-bubble {
-  padding: 32rpx 40rpx;
-}
-
-.typing-dots {
+  padding: 24rpx 32rpx;
   display: flex;
-  gap: 12rpx;
-}
-
-.typing-dot {
-  width: 12rpx;
-  height: 12rpx;
-  border-radius: 50%;
-  background-color: #FF6B35;
-  animation: typingDot 1.4s ease-in-out infinite;
-}
-
-.typing-dot:nth-child(2) { animation-delay: 0.2s; }
-.typing-dot:nth-child(3) { animation-delay: 0.4s; }
-
-@keyframes typingDot {
-  0%, 80%, 100% { transform: scale(0.6); opacity: 0.3; }
-  40% { transform: scale(1); opacity: 1; }
+  align-items: center;
+  justify-content: center;
 }
 
 /* Input area */
@@ -365,47 +334,14 @@ function handleSend() {
 .input-row {
   display: flex;
   align-items: center;
-  gap: 20rpx;
+  gap: 16rpx;
+  background-color: #F5F6FA;
+  padding: 8rpx 16rpx;
+  border-radius: 44rpx;
 }
 
 .chat-input {
   flex: 1;
-  height: 88rpx;
-  background-color: #F5F6FA;
-  border-radius: 44rpx;
-  padding: 0 36rpx;
-  font-size: 30rpx;
-  color: #1A1A2E;
-}
-
-.input-placeholder {
-  color: #9CA3AF;
-}
-
-.send-btn {
-  width: 88rpx;
-  height: 88rpx;
-  border-radius: 44rpx;
-  background: linear-gradient(135deg, #FF6B35, #FFB830);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  box-shadow: 0 8rpx 20rpx rgba(255, 107, 53, 0.2);
-}
-
-.send-btn:active {
-  transform: scale(0.95);
-}
-
-.send-btn.send-disabled {
-  opacity: 0.4;
-  box-shadow: none;
-}
-
-.send-icon {
-  font-size: 40rpx;
-  font-weight: 700;
-  color: #FFFFFF;
+  background-color: transparent;
 }
 </style>

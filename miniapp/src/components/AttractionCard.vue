@@ -1,5 +1,5 @@
 <template>
-  <view class="attraction-card" @tap="$emit('tap')">
+  <wd-card custom-class="attraction-card" @click="$emit('tap')">
     <view class="card-image-wrap">
       <image v-if="imageUrl" :src="imageUrl" mode="aspectFill" class="card-image" @error="$emit('image-error')" />
       <view v-else class="card-image-placeholder">
@@ -8,11 +8,11 @@
       <view class="card-badge">
         <text class="badge-num">{{ order }}</text>
       </view>
-      <view v-if="attraction.ticket_price" class="price-tag">
-        <text class="price-text">¥{{ attraction.ticket_price }}</text>
-      </view>
+      <wd-tag v-if="attraction.ticket_price" type="success" custom-style="position: absolute; bottom: 16rpx; right: 16rpx; background: rgba(255,255,255,0.9); border: none; color: #10B981;">
+        ¥{{ attraction.ticket_price }}
+      </wd-tag>
     </view>
-    <view class="card-info">
+    <view class="card-content">
       <text class="card-name">{{ attraction.name }}</text>
       <view class="card-meta">
         <text class="meta-item">📍 {{ attraction.address || '暂无地址' }}</text>
@@ -20,11 +20,10 @@
       </view>
       <text class="card-desc" v-if="attraction.description">{{ attraction.description }}</text>
       <view v-if="attraction.rating" class="card-rating">
-        <text class="rating-star">⭐</text>
-        <text class="rating-value">{{ attraction.rating }}</text>
+        <wd-tag type="warning" plain size="small">⭐ {{ attraction.rating }}</wd-tag>
       </view>
     </view>
-  </view>
+  </wd-card>
 </template>
 
 <script setup lang="ts">
@@ -35,20 +34,18 @@ defineEmits<{ (e: 'tap'): void; (e: 'image-error'): void }>()
 
 <style scoped>
 .attraction-card {
-  overflow: hidden;
   margin-bottom: 24rpx;
-  background: #FFFFFF;
-  border-radius: 24rpx;
-  box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.05);
-  border: 1rpx solid #E8ECF2;
+  overflow: hidden;
+}
+:deep(.wd-card__content) {
+  padding: 0 !important;
 }
 .card-image-wrap { position: relative; width: 100%; height: 320rpx; }
-.card-image { width: 100%; height: 100%; border-radius: 24rpx 24rpx 0 0; }
+.card-image { width: 100%; height: 100%; }
 .card-image-placeholder {
   width: 100%; height: 100%;
   display: flex; align-items: center; justify-content: center;
   background: linear-gradient(135deg, #FFF0E8, #FFF8E8);
-  border-radius: 24rpx 24rpx 0 0;
 }
 .placeholder-icon { font-size: 80rpx; }
 .card-badge {
@@ -59,14 +56,7 @@ defineEmits<{ (e: 'tap'): void; (e: 'image-error'): void }>()
   box-shadow: 0 4rpx 12rpx rgba(255, 107, 53, 0.3);
 }
 .badge-num { font-size: 26rpx; font-weight: 700; color: #FFFFFF; }
-.price-tag {
-  position: absolute; bottom: 16rpx; right: 16rpx;
-  padding: 8rpx 20rpx; border-radius: 20rpx;
-  background: rgba(255, 255, 255, 0.92);
-  box-shadow: 0 2rpx 8rpx rgba(0,0,0,0.08);
-}
-.price-text { font-size: 24rpx; color: #10B981; font-weight: 600; }
-.card-info { padding: 24rpx; }
+.card-content { padding: 24rpx; }
 .card-name { font-size: 32rpx; font-weight: 700; color: #1A1A2E; margin-bottom: 12rpx; display: block; }
 .card-meta { display: flex; flex-direction: column; gap: 8rpx; margin-bottom: 16rpx; }
 .meta-item { font-size: 24rpx; color: #6B7280; }
@@ -75,7 +65,5 @@ defineEmits<{ (e: 'tap'): void; (e: 'image-error'): void }>()
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
   overflow: hidden; line-height: 1.5; margin-bottom: 12rpx;
 }
-.card-rating { display: flex; align-items: center; gap: 8rpx; }
-.rating-star { font-size: 24rpx; }
-.rating-value { font-size: 26rpx; color: #FFB830; font-weight: 600; }
+.card-rating { display: flex; align-items: center; gap: 8rpx; margin-top: 12rpx; }
 </style>

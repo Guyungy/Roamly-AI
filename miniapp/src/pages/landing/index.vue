@@ -1,63 +1,72 @@
 <template>
   <view class="landing-page">
-    <NavBar />
+    <wd-navbar fixed placeholder safe-area-inset-top>
+      <template #title>
+        <view class="navbar-title">
+          <text class="brand-emoji">🎒</text>
+          <text class="brand-name">出门啦</text>
+        </view>
+      </template>
+    </wd-navbar>
 
     <!-- 剩余次数提示条 -->
-    <view class="quota-hint-bar" @tap="goToProfile">
-      <text class="quota-hint-icon">🎒</text>
-      <text class="quota-hint-text">
-        今日剩余 <text class="quota-hint-num" :class="{ 'is-zero': !quotaStore.canPlan }">{{ quotaStore.totalRemaining }}</text> 次规划
-      </text>
-      <text class="quota-hint-arrow">获取更多 ›</text>
-    </view>
+    <wd-notice-bar
+      v-if="quotaStore.totalRemaining !== undefined"
+      type="warning"
+      @tap="goToProfile"
+      custom-class="quota-notice"
+    >
+      <template #prefix>
+        <text class="notice-icon">🎒</text>
+      </template>
+      今日剩余 {{ quotaStore.totalRemaining }} 次规划机会。点击获取更多 ›
+    </wd-notice-bar>
 
     <!-- Hero 区域 -->
     <view class="hero-section">
       <view class="hero-content">
-        <text class="hero-emoji">🎒</text>
-        <text class="hero-title">出门啦</text>
-        <text class="hero-subtitle">AI 帮你规划，说走就走！</text>
-        <text class="hero-desc">输入目的地，开启你的专属智能行程规划</text>
+        <text class="hero-title">AI 智能行程规划</text>
+        <text class="hero-desc">告别繁琐攻略，三步定制你的专属旅程</text>
       </view>
     </view>
 
     <!-- 表单区域 -->
-    <view class="form-section">
+    <view class="form-container">
       <!-- Step 1: 基础信息 -->
-      <view class="form-step">
+      <wd-card custom-class="step-card">
         <view class="step-header">
-          <view class="step-number"><text class="step-num-text">1</text></view>
+          <view class="step-number">1</view>
           <text class="step-title">你想去哪里？</text>
         </view>
 
-        <view class="form-group">
-          <text class="form-label">目的地城市</text>
-          <input
-            class="form-input"
+        <view class="form-item">
+          <wd-input
             v-model="formData.city"
+            label="目的地城市"
             placeholder="例如：杭州、成都、北京..."
-            placeholder-class="input-placeholder"
+            clearable
+            label-width="180rpx"
           />
         </view>
 
-        <view class="form-row">
-          <view class="form-group flex-1">
-            <text class="form-label">出发日期</text>
+        <view class="date-row">
+          <view class="date-item">
+            <text class="picker-label">出发日期</text>
             <picker mode="date" :value="formData.start_date" @change="onStartDateChange">
-              <view class="form-input picker-input">
-                <text :class="formData.start_date ? 'picker-value' : 'input-placeholder'">
-                  {{ formData.start_date || '开始日期' }}
+              <view class="native-picker-inner">
+                <text :class="formData.start_date ? 'val' : 'ph'">
+                  {{ formData.start_date || '选择日期' }}
                 </text>
                 <text class="picker-icon">📅</text>
               </view>
             </picker>
           </view>
-          <view class="form-group flex-1">
-            <text class="form-label">返回日期</text>
+          <view class="date-item">
+            <text class="picker-label">返回日期</text>
             <picker mode="date" :value="formData.end_date" :start="formData.start_date" @change="onEndDateChange">
-              <view class="form-input picker-input">
-                <text :class="formData.end_date ? 'picker-value' : 'input-placeholder'">
-                  {{ formData.end_date || '结束日期' }}
+              <view class="native-picker-inner">
+                <text :class="formData.end_date ? 'val' : 'ph'">
+                  {{ formData.end_date || '选择日期' }}
                 </text>
                 <text class="picker-icon">📅</text>
               </view>
@@ -65,92 +74,101 @@
           </view>
         </view>
 
-        <view v-if="travelDays > 0" class="days-badge">
-          <text class="days-text">共 {{ travelDays }} 天行程</text>
+        <view v-if="travelDays > 0" class="days-indicator">
+          <text>共 {{ travelDays }} 天行程</text>
         </view>
-      </view>
+      </wd-card>
 
       <!-- Step 2: 偏好设置 -->
-      <view class="form-step">
+      <wd-card custom-class="step-card">
         <view class="step-header">
-          <view class="step-number"><text class="step-num-text">2</text></view>
+          <view class="step-number">2</view>
           <text class="step-title">出行偏好</text>
         </view>
 
-        <view class="form-group">
-          <text class="form-label">交通方式</text>
-          <view class="option-grid">
-            <view
+        <view class="option-group">
+          <text class="option-label">交通方式</text>
+          <view class="tag-grid">
+            <wd-tag
               v-for="opt in transportOptions"
               :key="opt.value"
-              class="option-item"
-              :class="{ 'option-active': formData.transportation === opt.value }"
-              @tap="formData.transportation = opt.value"
+              round
+              type="primary"
+              :plain="formData.transportation !== opt.value"
+              @click="formData.transportation = opt.value"
+              custom-class="choice-tag"
             >
-              <text class="option-icon">{{ opt.icon }}</text>
-              <text class="option-text">{{ opt.label }}</text>
-            </view>
+              {{ opt.icon }} {{ opt.label }}
+            </wd-tag>
           </view>
         </view>
 
-        <view class="form-group">
-          <text class="form-label">住宿类型</text>
-          <view class="option-grid">
-            <view
+        <view class="option-group">
+          <text class="option-label">住宿类型</text>
+          <view class="tag-grid">
+            <wd-tag
               v-for="opt in accommodationOptions"
               :key="opt.value"
-              class="option-item"
-              :class="{ 'option-active': formData.accommodation === opt.value }"
-              @tap="formData.accommodation = opt.value"
+              round
+              type="primary"
+              :plain="formData.accommodation !== opt.value"
+              @click="formData.accommodation = opt.value"
+              custom-class="choice-tag"
             >
-              <text class="option-icon">{{ opt.icon }}</text>
-              <text class="option-text">{{ opt.label }}</text>
-            </view>
+              {{ opt.icon }} {{ opt.label }}
+            </wd-tag>
           </view>
         </view>
-      </view>
+      </wd-card>
 
       <!-- Step 3: 兴趣标签 -->
-      <view class="form-step">
+      <wd-card custom-class="step-card">
         <view class="step-header">
-          <view class="step-number"><text class="step-num-text">3</text></view>
-          <text class="step-title">兴趣偏好</text>
+          <view class="step-number">3</view>
+          <text class="step-title">个性化定制</text>
         </view>
 
-        <view class="form-group">
-          <text class="form-label">感兴趣的内容（多选）</text>
+        <view class="option-group">
+          <text class="option-label">兴趣偏好（多选）</text>
           <view class="tag-grid">
-            <view
+            <wd-tag
               v-for="pref in preferenceOptions"
               :key="pref.value"
-              class="tag-item"
-              :class="{ 'tag-active': formData.preferences.includes(pref.value) }"
-              @tap="togglePreference(pref.value)"
+              round
+              type="primary"
+              :plain="!formData.preferences.includes(pref.value)"
+              @click="togglePreference(pref.value)"
+              custom-class="choice-tag"
             >
-              <text class="tag-icon">{{ pref.icon }}</text>
-              <text class="tag-text">{{ pref.label }}</text>
-            </view>
+              {{ pref.icon }} {{ pref.label }}
+            </wd-tag>
           </view>
         </view>
 
-        <view class="form-group">
-          <text class="form-label">其他需求</text>
-          <textarea
-            class="form-textarea"
+        <view class="textarea-wrapper">
+          <wd-textarea
             v-model="formData.free_text_input"
-            placeholder="比如：带老人出行，想吃地道美食..."
-            placeholder-class="input-placeholder"
+            label="其他需求"
+            placeholder="比如：带老人出行，想吃地道美食，不走回头路..."
+            auto-height
             :maxlength="200"
+            label-width="180rpx"
           />
         </view>
-      </view>
+      </wd-card>
 
       <!-- 提交按钮 -->
       <view class="submit-section">
-        <button class="submit-btn" :disabled="!canSubmit" @tap="handleSubmit">
-          <text class="submit-icon">🎒</text>
-          <text class="submit-text">立即生成行程</text>
-        </button>
+        <wd-button
+          type="primary"
+          block
+          round
+          size="large"
+          :disabled="!canSubmit"
+          @click="handleSubmit"
+        >
+          立即生成行程
+        </wd-button>
         <text class="submit-hint">AI 正在为你规划最佳路线...</text>
       </view>
     </view>
@@ -166,13 +184,14 @@
       @watch-ad="handleWatchAd"
       @invite="handleInvite"
     />
+
+    <wd-toast />
   </view>
 </template>
 
 <script setup lang="ts">
 import { reactive, computed, ref } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
-import NavBar from '@/components/NavBar.vue'
 import LoadingOverlay from '@/components/LoadingOverlay.vue'
 import QuotaWall from '@/components/QuotaWall.vue'
 import { useTripStore } from '@/stores/trip'
@@ -355,81 +374,46 @@ function handleInvite() {
 </script>
 
 <style scoped>
+:deep(.wd-navbar) {
+  --wd-navbar-title-font-size: 36rpx;
+  --wd-navbar-title-font-weight: 700;
+}
+
 .landing-page {
   min-height: 100vh;
   background-color: #F5F6FA;
-  padding-bottom: 60rpx;
+  padding-bottom: 80rpx;
 }
 
-/* 次数提示条 */
-.quota-hint-bar {
+.navbar-title {
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 12rpx;
-  padding: 20rpx 32rpx;
-  background-color: #FFF5F0;
-  border-bottom: 1rpx solid #FFE4D6;
+  gap: 8rpx;
 }
 
-.quota-hint-icon {
-  font-size: 28rpx;
+.brand-emoji {
+  font-size: 40rpx;
 }
 
-.quota-hint-text {
-  font-size: 26rpx;
-  color: #6B7280;
-}
-
-.quota-hint-num {
-  font-weight: 700;
+.brand-name {
+  font-size: 34rpx;
+  font-weight: 800;
   color: #FF6B35;
-  font-size: 30rpx;
 }
 
-.quota-hint-num.is-zero {
-  color: #EF4444;
+.notice-icon {
+  margin-right: 12rpx;
 }
 
-.quota-hint-arrow {
-  font-size: 24rpx;
-  color: #FF6B35;
-  margin-left: 8rpx;
-  opacity: 0.8;
-}
-
-/* Hero */
 .hero-section {
-  padding: 60rpx 48rpx 40rpx;
-  text-align: center;
-  background-color: #FFFFFF;
-}
-
-.hero-content {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
-
-.hero-emoji {
-  font-size: 80rpx;
-  margin-bottom: 20rpx;
+  padding: 60rpx 40rpx;
+  background: #FFFFFF;
 }
 
 .hero-title {
-  font-size: 64rpx;
+  display: block;
+  font-size: 48rpx;
   font-weight: 800;
-  color: #FF6B35;
-  background: linear-gradient(135deg, #FF6B35, #FFB830);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  margin-bottom: 12rpx;
-}
-
-.hero-subtitle {
-  font-size: 32rpx;
-  font-weight: 600;
   color: #1A1A2E;
   margin-bottom: 16rpx;
 }
@@ -437,21 +421,16 @@ function handleInvite() {
 .hero-desc {
   font-size: 28rpx;
   color: #9CA3AF;
-  line-height: 1.6;
 }
 
-/* 表单 */
-.form-section {
-  padding: 32rpx;
+.form-container {
+  padding: 20rpx;
 }
 
-.form-step {
-  margin-bottom: 32rpx;
-  background: #FFFFFF;
-  border-radius: 32rpx;
-  padding: 40rpx 32rpx;
-  box-shadow: 0 4rpx 20rpx rgba(0, 0, 0, 0.03);
-  border: 1rpx solid #E8ECF2;
+:deep(.step-card) {
+  margin-bottom: 24rpx !important;
+  border-radius: 24rpx !important;
+  overflow: hidden;
 }
 
 .step-header {
@@ -462,237 +441,132 @@ function handleInvite() {
 }
 
 .step-number {
-  width: 48rpx;
-  height: 48rpx;
+  width: 44rpx;
+  height: 44rpx;
   border-radius: 12rpx;
   background: #FF6B35;
+  color: #FFFFFF;
   display: flex;
   align-items: center;
   justify-content: center;
-}
-
-.step-num-text {
-  font-size: 28rpx;
+  font-size: 26rpx;
   font-weight: 700;
-  color: #FFFFFF;
 }
 
 .step-title {
-  font-size: 34rpx;
+  font-size: 32rpx;
   font-weight: 700;
   color: #1A1A2E;
 }
 
-.form-group {
-  margin-bottom: 32rpx;
+.form-item {
+  margin-bottom: 24rpx;
 }
 
-.form-label {
+.date-row {
+  display: flex;
+  gap: 20rpx;
+  padding: 0 12rpx;
+}
+
+.date-item {
+  flex: 1;
+}
+
+.picker-label {
   display: block;
-  font-size: 28rpx;
-  font-weight: 600;
-  color: #1A1A2E;
-  margin-bottom: 16rpx;
+  font-size: 24rpx;
+  color: #646566;
+  margin-bottom: 12rpx;
+  padding-left: 12rpx;
 }
 
-.form-input {
-  width: 100%;
-  height: 96rpx;
-  background: #F5F6FA;
-  border: 2rpx solid transparent;
-  border-radius: 20rpx;
-  padding: 0 32rpx;
-  font-size: 30rpx;
-  color: #1A1A2E;
-  box-sizing: border-box;
-  transition: all 0.2s;
-}
-
-.form-input:focus {
-  border-color: #FF6B35;
-  background: #FFFFFF;
-}
-
-.input-placeholder {
-  color: #9CA3AF;
-}
-
-.picker-input {
+.native-picker-inner {
+  height: 88rpx;
+  background: #F7F8FA;
+  border-radius: 12rpx;
+  padding: 0 24rpx;
   display: flex;
   align-items: center;
   justify-content: space-between;
 }
 
-.picker-value {
-  color: #1A1A2E;
-  font-size: 30rpx;
+.native-picker-inner .ph {
+  color: #C8C9CC;
+  font-size: 28rpx;
+}
+
+.native-picker-inner .val {
+  color: #323233;
+  font-size: 28rpx;
 }
 
 .picker-icon {
-  font-size: 32rpx;
+  font-size: 28rpx;
 }
 
-.form-row {
-  display: flex;
-  gap: 20rpx;
-}
-
-.flex-1 {
-  flex: 1;
-}
-
-.days-badge {
+.days-indicator {
+  margin-top: 24rpx;
   text-align: center;
-  margin-top: 8rpx;
 }
 
-.days-text {
-  font-size: 26rpx;
-  color: #FF6B35;
-  font-weight: 700;
-  background: #FFF5F0;
-  padding: 10rpx 32rpx;
-  border-radius: 999rpx;
-}
-
-/* 选项网格 */
-.option-grid {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 16rpx;
-}
-
-.option-item {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 8rpx;
-  padding: 24rpx 16rpx;
-  border-radius: 24rpx;
-  background: #F5F6FA;
-  border: 2rpx solid transparent;
-  flex: 1;
-  min-width: calc(25% - 12rpx);
-  box-sizing: border-box;
-  transition: all 0.2s;
-}
-
-.option-item.option-active {
-  background: #FFF5F0;
-  border-color: #FF6B35;
-}
-
-.option-icon {
-  font-size: 40rpx;
-}
-
-.option-text {
+.days-indicator text {
   font-size: 24rpx;
-  color: #6B7280;
-  font-weight: 500;
-}
-
-.option-item.option-active .option-text {
   color: #FF6B35;
-  font-weight: 700;
+  background: #FFF5F0;
+  padding: 8rpx 24rpx;
+  border-radius: 100rpx;
+  font-weight: 600;
 }
 
-/* 标签网格 */
+.option-group {
+  margin-bottom: 32rpx;
+}
+
+.option-label {
+  display: block;
+  font-size: 26rpx;
+  color: #646566;
+  margin-bottom: 20rpx;
+  padding-left: 12rpx;
+}
+
 .tag-grid {
   display: flex;
   flex-wrap: wrap;
   gap: 16rpx;
 }
 
-.tag-item {
-  display: flex;
-  align-items: center;
-  gap: 8rpx;
-  padding: 16rpx 28rpx;
-  border-radius: 999rpx;
-  background: #F5F6FA;
-  border: 2rpx solid transparent;
-  transition: all 0.2s;
+:deep(.choice-tag) {
+  padding: 12rpx 24rpx !important;
+  font-size: 26rpx !important;
+  --wd-tag-primary-color: #FF6B35;
 }
 
-.tag-item.tag-active {
-  background: #FF6B35;
-  border-color: #FF6B35;
+.textarea-wrapper {
+  margin-top: 20rpx;
 }
 
-.tag-icon {
-  font-size: 28rpx;
-}
-
-.tag-text {
-  font-size: 26rpx;
-  color: #6B7280;
-  font-weight: 500;
-}
-
-.tag-item.tag-active .tag-text {
-  color: #FFFFFF;
-  font-weight: 700;
-}
-
-.form-textarea {
-  width: 100%;
-  min-height: 180rpx;
-  background: #F5F6FA;
-  border: 2rpx solid transparent;
-  border-radius: 24rpx;
-  padding: 24rpx 32rpx;
-  font-size: 28rpx;
-  color: #1A1A2E;
-  box-sizing: border-box;
-  line-height: 1.6;
-}
-
-/* 提交 */
 .submit-section {
-  padding: 40rpx 0 60rpx;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
+  padding: 40rpx 20rpx;
+  text-align: center;
 }
 
-.submit-btn {
-  width: 100%;
-  height: 110rpx;
-  background: linear-gradient(135deg, #FF6B35 0%, #FFB830 100%);
-  border: none;
-  border-radius: 55rpx;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 16rpx;
-  box-shadow: 0 12rpx 32rpx rgba(255, 107, 53, 0.25);
-}
-
-.submit-btn:active {
-  transform: scale(0.98);
-}
-
-.submit-btn[disabled] {
-  opacity: 0.5;
-  box-shadow: none;
-}
-
-.submit-icon {
-  font-size: 36rpx;
-}
-
-.submit-text {
-  font-size: 34rpx;
-  font-weight: 700;
-  color: #FFFFFF;
-  letter-spacing: 2rpx;
+:deep(.wd-button--primary) {
+  background: #FF6B35 !important;
+  border-color: #FF6B35 !important;
 }
 
 .submit-hint {
+  display: block;
+  margin-top: 20rpx;
   font-size: 24rpx;
   color: #9CA3AF;
-  margin-top: 24rpx;
+}
+
+/* 适配 wot-design-uni 的 primary color */
+:deep(.wd-notice-bar--warning) {
+  color: #FF6B35;
+  background-color: #FFF5F0;
 }
 </style>

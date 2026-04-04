@@ -1,107 +1,103 @@
 <template>
   <view class="result-page">
-    <NavBar show-back />
+    <wd-navbar title="行程详情" left-arrow @click-left="goBack" fixed placeholder />
 
     <view v-if="tripStore.hasTripPlan" class="result-content">
       <!-- 城市头部 -->
-      <view class="city-hero">
-        <view class="hero-emoji">🎒</view>
-        <text class="city-name">{{ tripPlan!.city }}</text>
-        <view class="city-date-box">
-          <text class="city-date">{{ tripPlan!.start_date }} — {{ tripPlan!.end_date }}</text>
-        </view>
-        <text v-if="tripPlan!.overall_suggestions" class="city-suggestion">
-          {{ tripPlan!.overall_suggestions }}
-        </text>
-      </view>
-
-      <!-- Tab 切换 -->
-      <scroll-view scroll-x class="tab-scroll" :show-scrollbar="false">
-        <view class="tab-bar">
-          <view
-            v-for="tab in tabs"
-            :key="tab.key"
-            class="tab-item"
-            :class="{ 'tab-active': activeTab === tab.key }"
-            @tap="activeTab = tab.key"
-          >
-            <text class="tab-icon">{{ tab.icon }}</text>
-            <text class="tab-text">{{ tab.label }}</text>
+      <wd-card class="city-hero-card" :body-style="{ padding: '40rpx' }">
+        <view class="city-hero">
+          <view class="hero-emoji">🎒</view>
+          <view class="city-name">{{ tripPlan!.city }}</view>
+          <view class="city-date-box">
+            <wd-tag type="primary" plain round>
+              {{ tripPlan!.start_date }} — {{ tripPlan!.end_date }}
+            </wd-tag>
+          </view>
+          <view v-if="tripPlan!.overall_suggestions" class="city-suggestion">
+            {{ tripPlan!.overall_suggestions }}
           </view>
         </view>
-      </scroll-view>
+      </wd-card>
 
-      <!-- 每日行程 -->
-      <view v-show="activeTab === 'days'" class="section-content">
-        <DayCard
-          v-for="(day, index) in tripPlan!.days"
-          :key="day.day_index"
-          :day="day"
-          :images="attractionImages"
-          :default-expanded="index === 0"
-        />
-      </view>
+      <!-- Tab 切换 -->
+      <view class="tabs-container">
+        <wd-tabs v-model="activeTab" sticky animated>
+          <wd-tab v-for="tab in tabs" :key="tab.key" :title="tab.label" :name="tab.key">
+            <view class="section-content">
+              <!-- 每日行程 -->
+              <template v-if="tab.key === 'days'">
+                <DayCard
+                  v-for="(day, index) in tripPlan!.days"
+                  :key="day.day_index"
+                  :day="day"
+                  :images="attractionImages"
+                  :default-expanded="index === 0"
+                />
+              </template>
 
-      <!-- 预算 -->
-      <view v-show="activeTab === 'budget'" class="section-content">
-        <BudgetPanel v-if="tripPlan!.budget" :budget="tripPlan!.budget" />
-        <view v-else class="empty-section">
-          <text class="empty-text">暂无预算数据</text>
-        </view>
-      </view>
+              <!-- 预算 -->
+              <template v-if="tab.key === 'budget'">
+                <BudgetPanel v-if="tripPlan!.budget" :budget="tripPlan!.budget" />
+                <wd-status-tip v-else image="content" tip="暂无预算数据" />
+              </template>
 
-      <!-- 天气 -->
-      <view v-show="activeTab === 'weather'" class="section-content">
-        <WeatherCard
-          v-if="tripPlan!.weather_info && tripPlan!.weather_info.length > 0"
-          :list="tripPlan!.weather_info"
-          :current="currentWeather"
-          :active-index="activeWeatherIndex"
-          @select="activeWeatherIndex = $event"
-        />
-        <view v-else class="empty-section">
-          <text class="empty-text">暂无天气数据</text>
-        </view>
-      </view>
+              <!-- 天气 -->
+              <template v-if="tab.key === 'weather'">
+                <WeatherCard
+                  v-if="tripPlan!.weather_info && tripPlan!.weather_info.length > 0"
+                  :list="tripPlan!.weather_info"
+                  :current="currentWeather"
+                  :active-index="activeWeatherIndex"
+                  @select="activeWeatherIndex = $event"
+                />
+                <wd-status-tip v-else image="content" tip="暂无天气数据" />
+              </template>
 
-      <!-- 地图 -->
-      <view v-show="activeTab === 'map'" class="section-content map-section">
-        <map
-          id="trip-map"
-          class="trip-map"
-          :latitude="mapCenter.latitude"
-          :longitude="mapCenter.longitude"
-          :scale="12"
-          :markers="mapMarkers"
-          :polyline="mapPolyline"
-          show-compass
-          enable-zoom
-          enable-scroll
-        />
+              <!-- 地图 -->
+              <template v-if="tab.key === 'map'">
+                <view class="map-section">
+                  <map
+                    id="trip-map"
+                    class="trip-map"
+                    :latitude="mapCenter.latitude"
+                    :longitude="mapCenter.longitude"
+                    :scale="12"
+                    :markers="mapMarkers"
+                    :polyline="mapPolyline"
+                    show-compass
+                    enable-zoom
+                    enable-scroll
+                  />
+                </view>
+              </template>
+            </view>
+          </wd-tab>
+        </wd-tabs>
       </view>
 
       <!-- 悬浮AI按钮 -->
-      <view class="fab-chat" @tap="goToChat">
-        <text class="fab-icon">🎒</text>
-        <text class="fab-text">问AI</text>
-      </view>
+      <wd-fab :draggable="true" type="primary" @click="goToChat">
+        <template #button>
+          <view class="fab-btn">
+            <text class="fab-icon">🎒</text>
+            <text class="fab-text">问AI</text>
+          </view>
+        </template>
+      </wd-fab>
     </view>
 
     <!-- 空状态 -->
     <view v-else class="empty-state">
-      <text class="empty-icon">🎒</text>
-      <text class="empty-title">还没有旅行计划</text>
-      <text class="empty-desc">去首页让 AI 帮你规划行程吧</text>
-      <button class="btn-primary" @tap="goToLanding">
-        <text class="submit-text">立即开始</text>
-      </button>
+      <wd-status-tip image="content" tip="还没有旅行计划" />
+      <view class="empty-action">
+        <wd-button type="primary" round block @click="goToLanding">立即开始</wd-button>
+      </view>
     </view>
   </view>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import NavBar from '@/components/NavBar.vue'
 import DayCard from '@/components/DayCard.vue'
 import BudgetPanel from '@/components/BudgetPanel.vue'
 import WeatherCard from '@/components/WeatherCard.vue'
@@ -115,15 +111,12 @@ const activeTab = ref('days')
 const activeWeatherIndex = ref(0)
 const attractionImages = ref<Record<string, string>>({})
 
-const tabs = computed(() => {
-  const list = [
-    { key: 'days', icon: '📋', label: '行程' },
-    { key: 'budget', icon: '💰', label: '预算' },
-    { key: 'weather', icon: '🌤', label: '天气' },
-    { key: 'map', icon: '🗺', label: '地图' },
-  ]
-  return list
-})
+const tabs = [
+  { key: 'days', label: '行程' },
+  { key: 'budget', label: '预算' },
+  { key: 'weather', label: '天气' },
+  { key: 'map', label: '地图' },
+]
 
 const currentWeather = computed(() => {
   const list = tripPlan.value?.weather_info ?? []
@@ -212,6 +205,10 @@ async function loadAttractionImages() {
   }
 }
 
+function goBack() {
+  uni.navigateBack()
+}
+
 function goToChat() {
   uni.navigateTo({ url: '/pages/chat/index' })
 }
@@ -231,137 +228,74 @@ onMounted(() => {
 .result-page {
   min-height: 100vh;
   background-color: #F5F6FA;
+}
+
+.result-content {
   padding-bottom: 120rpx;
 }
 
-/* City Hero */
+.city-hero-card {
+  margin: 24rpx;
+  border-radius: 32rpx;
+  overflow: hidden;
+}
+
 .city-hero {
-  background-color: #FFFFFF;
-  padding: 60rpx 40rpx 40rpx;
   text-align: center;
-  border-bottom-left-radius: 48rpx;
-  border-bottom-right-radius: 48rpx;
-  box-shadow: 0 4rpx 20rpx rgba(0, 0, 0, 0.02);
 }
 
 .hero-emoji {
-  font-size: 64rpx;
+  font-size: 80rpx;
   margin-bottom: 16rpx;
 }
 
 .city-name {
-  display: block;
-  font-size: 56rpx;
+  font-size: 48rpx;
   font-weight: 800;
   color: #1A1A2E;
   margin-bottom: 16rpx;
 }
 
 .city-date-box {
-  display: inline-block;
-  background-color: #FFF5F0;
-  padding: 8rpx 32rpx;
-  border-radius: 99rpx;
   margin-bottom: 24rpx;
 }
 
-.city-date {
-  font-size: 26rpx;
-  color: #FF6B35;
-  font-weight: 700;
-}
-
 .city-suggestion {
-  display: block;
-  font-size: 28rpx;
+  font-size: 26rpx;
   color: #6B7280;
   line-height: 1.6;
-  padding: 0 20rpx;
 }
 
-/* Tab Bar */
-.tab-scroll {
-  background-color: #FFFFFF;
-  margin-top: 20rpx;
-  white-space: nowrap;
-  position: sticky;
-  top: 0;
-  z-index: 10;
+.tabs-container {
+  margin-top: 12rpx;
 }
 
-.tab-bar {
-  display: inline-flex;
-  padding: 0 24rpx;
-}
-
-.tab-item {
-  display: inline-flex;
-  align-items: center;
-  gap: 12rpx;
-  padding: 28rpx 36rpx;
-  position: relative;
-}
-
-.tab-item.tab-active::after {
-  content: '';
-  position: absolute;
-  bottom: 0;
-  left: 36rpx;
-  right: 36rpx;
-  height: 6rpx;
-  background-color: #FF6B35;
-  border-radius: 3rpx;
-}
-
-.tab-icon {
-  font-size: 30rpx;
-}
-
-.tab-text {
-  font-size: 30rpx;
-  color: #9CA3AF;
-  font-weight: 500;
-}
-
-.tab-item.tab-active .tab-text {
-  color: #1A1A2E;
-  font-weight: 800;
-}
-
-/* Section content */
 .section-content {
-  padding: 32rpx;
+  padding: 24rpx;
 }
 
-/* Map */
 .map-section {
   padding: 0;
+  margin: -24rpx;
 }
 
 .trip-map {
   width: 100%;
-  height: calc(100vh - 400rpx);
+  height: calc(100vh - 500rpx);
 }
 
-/* FAB */
-.fab-chat {
-  position: fixed;
-  right: 40rpx;
-  bottom: 60rpx;
-  width: 120rpx;
-  height: 120rpx;
-  border-radius: 60rpx;
-  background: linear-gradient(135deg, #FF6B35, #FFB830);
+.fab-btn {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 12rpx 32rpx rgba(255, 107, 53, 0.3);
-  z-index: 100;
+  width: 112rpx;
+  height: 112rpx;
 }
 
 .fab-icon {
   font-size: 40rpx;
+  line-height: 1;
 }
 
 .fab-text {
@@ -371,57 +305,15 @@ onMounted(() => {
   margin-top: 4rpx;
 }
 
-/* Empty */
 .empty-state {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  padding: 200rpx 60rpx;
+  padding-top: 200rpx;
 }
 
-.empty-icon {
-  font-size: 100rpx;
-  margin-bottom: 32rpx;
-}
-
-.empty-title {
-  font-size: 36rpx;
-  font-weight: 800;
-  color: #1A1A2E;
-  margin-bottom: 16rpx;
-}
-
-.empty-desc {
-  font-size: 28rpx;
-  color: #9CA3AF;
-  margin-bottom: 60rpx;
-}
-
-.btn-primary {
+.empty-action {
+  margin-top: 48rpx;
   width: 320rpx;
-  height: 96rpx;
-  background: linear-gradient(135deg, #FF6B35, #FFB830);
-  border-radius: 48rpx;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: none;
-}
-
-.submit-text {
-  color: #FFFFFF;
-  font-size: 32rpx;
-  font-weight: 700;
-}
-
-.empty-section {
-  padding: 120rpx 0;
-  text-align: center;
-}
-
-.empty-text {
-  font-size: 28rpx;
-  color: #9CA3AF;
 }
 </style>

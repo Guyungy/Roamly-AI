@@ -1,135 +1,133 @@
 <template>
   <view class="profile-page">
-    <NavBar />
+    <wd-navbar title="我的" fixed placeholder />
 
     <!-- 用户区 -->
     <view class="user-section">
       <view class="avatar-ring">
         <text class="avatar-emoji">🎒</text>
       </view>
-      <text class="user-greeting">出门啦用户</text>
-      <text class="user-sub">探索世界的每一个角落</text>
+      <view class="user-greeting">出门啦用户</view>
+      <view class="user-sub">探索世界的每一个角落</view>
     </view>
 
     <!-- 配额仪表盘 -->
-    <view class="quota-dashboard">
-      <view class="dashboard-header">
-        <text class="dashboard-title">今日规划额度</text>
-        <text class="dashboard-reset">每日 0:00 重置</text>
-      </view>
-
-      <view class="quota-display">
-        <view class="quota-number-wrap">
-          <text class="quota-number" :class="{ 'is-zero': !quotaStore.canPlan }">
-            {{ quotaStore.totalRemaining }}
-          </text>
-          <text class="quota-label-unit">次可用</text>
+    <wd-card class="quota-card">
+      <view class="quota-dashboard">
+        <view class="dashboard-header">
+          <text class="dashboard-title">今日规划额度</text>
+          <text class="dashboard-reset">每日 0:00 重置</text>
         </view>
 
-        <view class="quota-breakdown">
-          <view class="breakdown-item">
-            <text class="breakdown-dot free-dot" />
-            <text class="breakdown-label">免费</text>
-            <text class="breakdown-value">{{ quotaStore.freeRemaining }}</text>
+        <view class="quota-display">
+          <view class="quota-number-wrap">
+            <wd-badge :value="quotaStore.totalRemaining" type="primary" class="quota-badge">
+              <text class="quota-number" :class="{ 'is-zero': !quotaStore.canPlan }">
+                {{ quotaStore.totalRemaining }}
+              </text>
+            </wd-badge>
+            <text class="quota-label-unit">次可用</text>
           </view>
-          <view class="breakdown-item">
-            <text class="breakdown-dot ad-dot" />
-            <text class="breakdown-label">广告奖励</text>
-            <text class="breakdown-value">{{ quotaStore.data.adRemaining }}</text>
-          </view>
-          <view class="breakdown-item">
-            <text class="breakdown-dot invite-dot" />
-            <text class="breakdown-label">邀请奖励</text>
-            <text class="breakdown-value">{{ quotaStore.data.inviteRemaining }}</text>
+
+          <view class="quota-breakdown">
+            <view class="breakdown-item">
+              <text class="breakdown-dot free-dot" />
+              <text class="breakdown-label">免费</text>
+              <text class="breakdown-value">{{ quotaStore.freeRemaining }}</text>
+            </view>
+            <view class="breakdown-item">
+              <text class="breakdown-dot ad-dot" />
+              <text class="breakdown-label">广告奖励</text>
+              <text class="breakdown-value">{{ quotaStore.data.adRemaining }}</text>
+            </view>
+            <view class="breakdown-item">
+              <text class="breakdown-dot invite-dot" />
+              <text class="breakdown-label">邀请奖励</text>
+              <text class="breakdown-value">{{ quotaStore.data.inviteRemaining }}</text>
+            </view>
           </view>
         </view>
+
+        <view class="quota-progress-box">
+          <wd-progress :percentage="quotaPercentage" color="#FF6B35" />
+        </view>
       </view>
-    </view>
+    </wd-card>
 
     <!-- 获取次数 -->
-    <view class="section-header">
-      <view class="section-line" />
-      <text class="section-title">获取更多次数</text>
-      <view class="section-line" />
+    <view class="section-title-wrap">
+      <wd-divider>获取更多次数</wd-divider>
     </view>
 
-    <!-- 看广告 -->
-    <view class="action-card" @tap="watchAd">
-      <view class="action-left">
-        <view class="action-icon-wrap ad-icon-bg">
-          <text class="action-icon">🎬</text>
-        </view>
-        <view class="action-info">
-          <text class="action-name">观看视频广告</text>
-          <text class="action-desc">看一段短视频即可获得规划机会</text>
-        </view>
-      </view>
-      <view class="action-right">
-        <view class="reward-pill">
-          <text class="reward-pill-text">+1次</text>
-        </view>
-        <text class="action-remain">今日还可看 {{ quotaStore.adCanWatch }} 次</text>
-      </view>
-    </view>
+    <wd-cell-group border class="action-cells">
+      <wd-cell title="观看视频广告" label="看一段短视频即可获得规划机会" center @click="watchAd">
+        <template #icon>
+          <view class="cell-icon-wrap ad-icon-bg">
+            <wd-icon name="video" size="40rpx" color="#4EADBD" />
+          </view>
+        </template>
+        <template #default>
+          <view class="cell-reward">
+            <wd-tag type="primary" plain>+1次</wd-tag>
+            <view class="cell-remain">余{{ quotaStore.adCanWatch }}次</view>
+          </view>
+        </template>
+      </wd-cell>
 
-    <!-- 邀请好友 -->
-    <view class="action-card" @tap="inviteFriend">
-      <view class="action-left">
-        <view class="action-icon-wrap invite-icon-bg">
-          <text class="action-icon">🎁</text>
-        </view>
-        <view class="action-info">
-          <text class="action-name">邀请好友使用</text>
-          <text class="action-desc">好友首次使用后双方各得奖励</text>
-        </view>
-      </view>
-      <view class="action-right">
-        <view class="reward-pill reward-pill-green">
-          <text class="reward-pill-text">+3次</text>
-        </view>
-        <text class="action-remain">已邀请 {{ quotaStore.data.totalInvites }} 人</text>
-      </view>
-    </view>
+      <wd-cell title="邀请好友使用" label="好友首次使用后双方各得奖励" center is-link @click="inviteFriend">
+        <template #icon>
+          <view class="cell-icon-wrap invite-icon-bg">
+            <wd-icon name="user-add" size="40rpx" color="#4ade80" />
+          </view>
+        </template>
+        <template #default>
+          <view class="cell-reward">
+            <wd-tag type="success" plain>+3次</wd-tag>
+            <view class="cell-remain">已邀{{ quotaStore.data.totalInvites }}人</view>
+          </view>
+        </template>
+      </wd-cell>
+    </wd-cell-group>
 
     <!-- 统计 -->
-    <view class="section-header" style="margin-top: 48rpx;">
-      <view class="section-line" />
-      <text class="section-title">使用统计</text>
-      <view class="section-line" />
+    <view class="section-title-wrap">
+      <wd-divider>使用统计</wd-divider>
     </view>
 
-    <view class="stats-grid">
-      <view class="stat-card">
-        <text class="stat-value">{{ historyStore.count }}</text>
-        <text class="stat-label">行程总数</text>
-      </view>
-      <view class="stat-card">
-        <text class="stat-value">{{ totalCities }}</text>
-        <text class="stat-label">到访城市</text>
-      </view>
-      <view class="stat-card">
-        <text class="stat-value">{{ totalDays }}</text>
-        <text class="stat-label">旅行天数</text>
-      </view>
-    </view>
+    <wd-card class="stats-card">
+      <wd-grid :column="3" border={false}>
+        <wd-grid-item>
+          <view class="stat-item">
+            <view class="stat-value">{{ historyStore.count }}</view>
+            <view class="stat-label">行程总数</view>
+          </view>
+        </wd-grid-item>
+        <wd-grid-item>
+          <view class="stat-item">
+            <view class="stat-value">{{ totalCities }}</view>
+            <view class="stat-label">到访城市</view>
+          </view>
+        </wd-grid-item>
+        <wd-grid-item>
+          <view class="stat-item">
+            <view class="stat-value">{{ totalDays }}</view>
+            <view class="stat-label">旅行天数</view>
+          </view>
+        </wd-grid-item>
+      </wd-grid>
+    </wd-card>
 
     <!-- 其他操作 -->
     <view class="menu-section">
-      <view class="menu-item" @tap="clearHistory">
-        <text class="menu-icon">🗑️</text>
-        <text class="menu-text">清空所有行程</text>
-        <text class="menu-arrow">›</text>
-      </view>
-      <view class="menu-item" @tap="showAbout">
-        <text class="menu-icon">ℹ️</text>
-        <text class="menu-text">关于出门啦</text>
-        <text class="menu-arrow">›</text>
-      </view>
+      <wd-cell-group border>
+        <wd-cell title="清空所有行程" is-link icon="delete" @click="clearHistory" />
+        <wd-cell title="关于出门啦" is-link icon="info-circle" @click="showAbout" />
+      </wd-cell-group>
     </view>
 
     <view class="footer-text">
-      <text class="footer-ver">出门啦 v2.0.0</text>
-      <text class="footer-powered">Powered by AI 🎒</text>
+      <view class="footer-ver">出门啦 v2.0.0</view>
+      <view class="footer-powered">Powered by AI 🎒</view>
     </view>
 
     <view class="safe-area-bottom" />
@@ -139,7 +137,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
-import NavBar from '@/components/NavBar.vue'
 import { useQuotaStore } from '@/stores/quota'
 import { useHistoryStore } from '@/stores/history'
 
@@ -157,6 +154,11 @@ const totalCities = computed(() => {
 
 const totalDays = computed(() => {
   return historyStore.items.reduce((sum, i) => sum + i.days, 0)
+})
+
+const quotaPercentage = computed(() => {
+  const total = 5 + 3 + 10 // 假设一个最大基数
+  return Math.min(100, (quotaStore.totalRemaining / total) * 100)
 })
 
 function watchAd() {
@@ -241,15 +243,15 @@ function showAbout() {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 48rpx 40rpx 40rpx;
+  padding: 48rpx 40rpx 32rpx;
 }
 
 .avatar-ring {
-  width: 120rpx;
-  height: 120rpx;
+  width: 128rpx;
+  height: 128rpx;
   border-radius: 50%;
   background-color: #FFFFFF;
-  border: 4rpx solid #FF6B35;
+  border: 6rpx solid #FF6B35;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -258,7 +260,7 @@ function showAbout() {
 }
 
 .avatar-emoji {
-  font-size: 56rpx;
+  font-size: 64rpx;
 }
 
 .user-greeting {
@@ -274,19 +276,23 @@ function showAbout() {
 }
 
 /* Dashboard */
+.quota-card {
+  margin: 0 24rpx 24rpx !important;
+  border-radius: 32rpx !important;
+  overflow: hidden;
+  background: rgba(255, 107, 53, 0.05) !important;
+  border: 1rpx solid rgba(255, 107, 53, 0.1) !important;
+}
+
 .quota-dashboard {
-  margin: 0 32rpx 24rpx;
-  padding: 32rpx;
-  background-color: rgba(255, 107, 53, 0.05);
-  border-radius: 32rpx;
-  border: 1rpx solid rgba(255, 107, 53, 0.1);
+  padding: 8rpx;
 }
 
 .dashboard-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 24rpx;
+  margin-bottom: 32rpx;
 }
 
 .dashboard-title {
@@ -303,37 +309,38 @@ function showAbout() {
 .quota-display {
   display: flex;
   align-items: center;
-  gap: 40rpx;
+  gap: 48rpx;
 }
 
 .quota-number-wrap {
   display: flex;
   flex-direction: column;
   align-items: center;
+  padding: 0 20rpx;
 }
 
 .quota-number {
-  font-size: 80rpx;
+  font-size: 88rpx;
   font-weight: 800;
   color: #FF6B35;
   line-height: 1;
 }
 
 .quota-number.is-zero {
-  color: #ef4444;
+  color: #fa4350;
 }
 
 .quota-label-unit {
   font-size: 24rpx;
   color: #9CA3AF;
-  margin-top: 8rpx;
+  margin-top: 12rpx;
 }
 
 .quota-breakdown {
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 12rpx;
+  gap: 16rpx;
 }
 
 .breakdown-item {
@@ -364,61 +371,25 @@ function showAbout() {
   color: #1A1A2E;
 }
 
-/* Section header */
-.section-header {
-  display: flex;
-  align-items: center;
-  gap: 20rpx;
-  margin: 36rpx 32rpx 24rpx;
+.quota-progress-box {
+  margin-top: 32rpx;
 }
 
-.section-line {
-  flex: 1;
-  height: 1rpx;
-  background-color: #E8ECF2;
-}
-
-.section-title {
-  font-size: 24rpx;
-  color: #9CA3AF;
-  font-weight: 600;
-  letter-spacing: 2rpx;
-  white-space: nowrap;
-}
-
-/* Action cards */
-.action-card {
-  margin: 0 32rpx 20rpx;
-  padding: 32rpx;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  background-color: #FFFFFF;
+/* Action Cells */
+.action-cells {
+  margin: 0 24rpx !important;
   border-radius: 24rpx;
-  border: 1rpx solid #E8ECF2;
-  box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.02);
-  transition: all 0.2s;
+  overflow: hidden;
 }
 
-.action-card:active {
-  background-color: #F9FAFB;
-}
-
-.action-left {
-  display: flex;
-  align-items: center;
-  gap: 20rpx;
-  flex: 1;
-}
-
-.action-icon-wrap {
+.cell-icon-wrap {
   width: 80rpx;
   height: 80rpx;
   border-radius: 20rpx;
   display: flex;
   align-items: center;
   justify-content: center;
-  flex-shrink: 0;
+  margin-right: 20rpx;
 }
 
 .ad-icon-bg {
@@ -429,124 +400,54 @@ function showAbout() {
   background-color: rgba(74, 222, 128, 0.1);
 }
 
-.action-icon {
-  font-size: 40rpx;
-}
-
-.action-info {
-  display: flex;
-  flex-direction: column;
-  gap: 4rpx;
-}
-
-.action-name {
-  font-size: 28rpx;
-  font-weight: 700;
-  color: #1A1A2E;
-}
-
-.action-desc {
-  font-size: 22rpx;
-  color: #9CA3AF;
-}
-
-.action-right {
+.cell-reward {
   display: flex;
   flex-direction: column;
   align-items: flex-end;
-  gap: 6rpx;
-  flex-shrink: 0;
+  gap: 4rpx;
 }
 
-.reward-pill {
-  padding: 8rpx 20rpx;
-  border-radius: 999rpx;
-  background: linear-gradient(135deg, #FF6B35, #FFB830);
-}
-
-.reward-pill-green {
-  background: linear-gradient(135deg, #4ade80, #22c55e);
-}
-
-.reward-pill-text {
-  font-size: 24rpx;
-  font-weight: 700;
-  color: #FFFFFF;
-}
-
-.action-remain {
+.cell-remain {
   font-size: 20rpx;
   color: #9CA3AF;
 }
 
-/* Stats */
-.stats-grid {
-  display: flex;
-  gap: 16rpx;
-  padding: 0 32rpx;
+.section-title-wrap {
+  padding: 40rpx 40rpx 20rpx;
 }
 
-.stat-card {
-  flex: 1;
-  padding: 32rpx 16rpx;
+/* Stats */
+.stats-card {
+  margin: 0 24rpx !important;
+  border-radius: 24rpx !important;
+}
+
+.stat-item {
   text-align: center;
-  background-color: #FFFFFF;
-  border-radius: 24rpx;
-  border: 1rpx solid #E8ECF2;
-  box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.02);
+  padding: 16rpx 0;
 }
 
 .stat-value {
-  display: block;
   font-size: 40rpx;
   font-weight: 800;
   color: #FF6B35;
-  margin-bottom: 8rpx;
+  margin-bottom: 4rpx;
 }
 
 .stat-label {
-  display: block;
   font-size: 22rpx;
   color: #9CA3AF;
 }
 
 /* Menu */
 .menu-section {
-  padding: 40rpx 32rpx 0;
-  display: flex;
-  flex-direction: column;
-  gap: 16rpx;
+  margin-top: 40rpx;
+  padding: 0 24rpx;
 }
 
-.menu-item {
-  display: flex;
-  align-items: center;
-  padding: 32rpx;
-  gap: 20rpx;
-  background-color: #FFFFFF;
+.menu-section :deep(.wd-cell-group) {
   border-radius: 24rpx;
-  border: 1rpx solid #E8ECF2;
-  box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.02);
-}
-
-.menu-item:active {
-  background-color: #F9FAFB;
-}
-
-.menu-icon {
-  font-size: 36rpx;
-}
-
-.menu-text {
-  flex: 1;
-  font-size: 28rpx;
-  font-weight: 600;
-  color: #6B7280;
-}
-
-.menu-arrow {
-  font-size: 28rpx;
-  color: #D1D5DB;
+  overflow: hidden;
 }
 
 /* Footer */
@@ -554,7 +455,7 @@ function showAbout() {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 60rpx 0 40rpx;
+  padding: 80rpx 0 40rpx;
   gap: 8rpx;
 }
 

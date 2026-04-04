@@ -1,17 +1,19 @@
 <template>
   <view class="nearby-page">
-    <NavBar />
+    <wd-navbar fixed border placeholder>
+      <template #title>
+        <view class="nav-title">📍 附近出行</view>
+      </template>
+    </wd-navbar>
 
-    <!-- 次数提示条 -->
-    <view class="quota-hint-bar" @tap="goToProfile">
-      <text class="quota-hint-icon">✦</text>
-      <text class="quota-hint-text">
-        今日剩余 <text class="quota-hint-num" :class="{ 'is-zero': !quotaStore.canPlan }">{{ quotaStore.totalRemaining }}</text> 次规划
-      </text>
-      <text class="quota-hint-arrow">获取更多 ›</text>
-    </view>
+    <wd-notice-bar
+      type="warning"
+      prefix="star-filled"
+      @click="goToProfile"
+    >
+      今日剩余 <text :class="['quota-num', { 'is-zero': !quotaStore.canPlan }]">{{ quotaStore.totalRemaining }}</text> 次规划，点击获取更多
+    </wd-notice-bar>
 
-    <!-- Hero -->
     <view class="hero-section">
       <view class="hero-glow" />
       <text class="hero-icon">📍</text>
@@ -19,95 +21,117 @@
       <text class="hero-desc">基于当前位置，AI 为你推荐半天或一天的短途好去处</text>
     </view>
 
-    <!-- 定位卡片 -->
-    <view class="location-card" @tap="refreshLocation">
-      <view class="location-left">
-        <view class="location-icon-wrap" :class="{ 'is-locating': locating }">
-          <text class="location-pin">📍</text>
+    <view class="card-section">
+      <wd-card custom-class="location-card">
+        <view class="location-content" @tap="refreshLocation">
+          <view class="location-main">
+            <view class="location-icon-wrap" :class="{ 'is-locating': locating }">
+              <wd-icon name="location-filled" size="24px" color="#4EADBD" />
+            </view>
+            <view class="location-text">
+              <view class="location-label">当前位置</view>
+              <view class="location-city" v-if="currentCity">{{ currentCity }}</view>
+              <view class="location-city loading" v-else-if="locating">正在定位...</view>
+              <view class="location-city fail" v-else>点击获取位置</view>
+            </view>
+          </view>
+          <wd-button size="small" plain round icon="refresh" :loading="locating" @tap.stop="refreshLocation">刷新</wd-button>
         </view>
-        <view class="location-info">
-          <text class="location-label">当前位置</text>
-          <text class="location-city" v-if="currentCity">{{ currentCity }}</text>
-          <text class="location-city location-loading" v-else-if="locating">正在定位...</text>
-          <text class="location-city location-fail" v-else>点击获取位置</text>
-        </view>
-      </view>
-      <view class="location-refresh">
-        <text class="refresh-icon">↻</text>
-      </view>
+      </wd-card>
     </view>
 
-    <!-- 时长选择 -->
     <view class="form-section">
-      <view class="section-label-row">
-        <text class="section-label-icon">⏱</text>
-        <text class="section-label-text">出行时长</text>
+      <view class="section-header">
+        <wd-icon name="time" size="18px" />
+        <text class="section-title">出行时长</text>
       </view>
       <view class="duration-grid">
-        <view
-          v-for="opt in durationOptions"
+        <view 
+          v-for="opt in durationOptions" 
           :key="opt.value"
-          class="duration-item"
-          :class="{ 'is-active': selectedDuration === opt.value }"
+          class="duration-item-wrapper"
           @tap="selectedDuration = opt.value"
         >
-          <text class="duration-emoji">{{ opt.icon }}</text>
-          <text class="duration-name">{{ opt.label }}</text>
-          <text class="duration-desc">{{ opt.desc }}</text>
+          <wd-card :custom-class="['duration-card', { 'is-active': selectedDuration === opt.value }]">
+            <view class="duration-body">
+              <text class="duration-icon">{{ opt.icon }}</text>
+              <view class="duration-info">
+                <text class="duration-label">{{ opt.label }}</text>
+                <text class="duration-desc">{{ opt.desc }}</text>
+              </view>
+            </view>
+          </wd-card>
         </view>
       </view>
     </view>
 
-    <!-- 类型选择 -->
     <view class="form-section">
-      <view class="section-label-row">
-        <text class="section-label-icon">🎯</text>
-        <text class="section-label-text">想去什么地方</text>
-        <text class="section-label-hint">可多选</text>
+      <view class="section-header">
+        <wd-icon name="target" size="18px" />
+        <text class="section-title">想去什么地方</text>
+        <text class="section-hint">可多选</text>
       </view>
       <view class="category-grid">
         <view
           v-for="cat in categoryOptions"
           :key="cat.value"
           class="category-item"
-          :class="{ 'is-active': selectedCategories.includes(cat.value) }"
           @tap="toggleCategory(cat.value)"
         >
-          <text class="category-emoji">{{ cat.icon }}</text>
-          <text class="category-name">{{ cat.label }}</text>
+          <wd-tag
+            round
+            size="large"
+            :type="selectedCategories.includes(cat.value) ? 'primary' : 'default'"
+            :plain="!selectedCategories.includes(cat.value)"
+            custom-class="cat-tag"
+          >
+            {{ cat.icon }} {{ cat.label }}
+          </wd-tag>
         </view>
       </view>
     </view>
 
-    <!-- 推荐卡片 -->
-    <view class="suggest-section" v-if="suggestions.length > 0">
-      <view class="section-label-row">
-        <text class="section-label-icon">💡</text>
-        <text class="section-label-text">为你推荐</text>
+    <view class="form-section" v-if="suggestions.length > 0">
+      <view class="section-header">
+        <wd-icon name="bulb" size="18px" />
+        <text class="section-title">为你推荐</text>
       </view>
       <scroll-view scroll-x class="suggest-scroll">
         <view class="suggest-list">
-          <view
+          <wd-tag
             v-for="s in suggestions"
             :key="s.text"
-            class="suggest-chip"
-            :class="{ 'is-active': extraText === s.text }"
-            @tap="extraText = extraText === s.text ? '' : s.text"
+            round
+            size="medium"
+            :type="extraText === s.text ? 'primary' : 'default'"
+            :plain="extraText !== s.text"
+            custom-class="suggest-tag"
+            @click="extraText = extraText === s.text ? '' : s.text"
           >
-            <text class="suggest-chip-icon">{{ s.icon }}</text>
-            <text class="suggest-chip-text">{{ s.text }}</text>
-          </view>
+            {{ s.icon }} {{ s.text }}
+          </wd-tag>
         </view>
       </scroll-view>
     </view>
 
-    <!-- 提交按钮 -->
     <view class="submit-section">
-      <button class="submit-btn" :disabled="!canSubmit" @tap="handleSubmit">
-        <text class="submit-icon">✦</text>
-        <text class="submit-text">AI 帮我规划</text>
-      </button>
-      <text class="submit-hint">{{ selectedDuration === 'half' ? '约 30 秒生成半日游方案' : '约 1 分钟生成一日游方案' }}</text>
+      <wd-button
+        block
+        round
+        size="large"
+        :disabled="!canSubmit"
+        :loading="tripStore.loading"
+        custom-style="background: #4EADBD; border-color: #4EADBD;"
+        @click="handleSubmit"
+      >
+        <view class="btn-content">
+          <text class="btn-spark">✦</text>
+          <text>AI 帮我规划</text>
+        </view>
+      </wd-button>
+      <view class="submit-hint">
+        {{ selectedDuration === 'half' ? '约 30 秒生成半日游方案' : '约 1 分钟生成一日游方案' }}
+      </view>
     </view>
 
     <LoadingOverlay :visible="tripStore.loading" :progress="tripStore.progressText" />
@@ -119,6 +143,9 @@
       @watch-ad="handleWatchAd"
       @invite="handleInvite"
     />
+
+    <wd-toast />
+    <wd-message-box />
   </view>
 </template>
 
@@ -429,31 +456,30 @@ function handleInvite() {
 .nearby-page {
   min-height: 100vh;
   background-color: #F5F6FA;
-  padding-bottom: 60rpx;
+  padding-bottom: env(safe-area-inset-bottom);
 }
 
-/* 次数提示条 */
-.quota-hint-bar {
+.nav-title {
+  font-weight: 600;
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 12rpx;
-  padding: 16rpx 32rpx;
-  background-color: rgba(78, 173, 189, 0.05);
-  border-bottom: 1rpx solid #E8ECF2;
+  gap: 8rpx;
 }
 
-.quota-hint-icon { font-size: 24rpx; color: #4EADBD; }
-.quota-hint-text { font-size: 24rpx; color: #6B7280; }
-.quota-hint-num { font-weight: 700; color: #4EADBD; font-size: 28rpx; }
-.quota-hint-num.is-zero { color: #ef4444; }
-.quota-hint-arrow { font-size: 22rpx; color: #9CA3AF; margin-left: 8rpx; }
+.quota-num {
+  font-weight: bold;
+  color: #4EADBD;
+  margin: 0 4rpx;
+}
+.quota-num.is-zero {
+  color: #fa4350;
+}
 
 /* Hero */
 .hero-section {
   position: relative;
   text-align: center;
-  padding: 56rpx 48rpx 40rpx;
+  padding: 40rpx 48rpx 32rpx;
   overflow: hidden;
 }
 
@@ -471,240 +497,223 @@ function handleInvite() {
 
 .hero-icon {
   display: block;
-  font-size: 52rpx;
-  margin-bottom: 16rpx;
+  font-size: 48rpx;
+  margin-bottom: 8rpx;
   position: relative;
   z-index: 1;
 }
 
 .hero-title {
   display: block;
-  font-size: 44rpx;
+  font-size: 40rpx;
   font-weight: 800;
   color: #4EADBD;
-  letter-spacing: 6rpx;
+  letter-spacing: 4rpx;
   position: relative;
   z-index: 1;
 }
 
 .hero-desc {
   display: block;
-  font-size: 26rpx;
-  color: #6B7280;
-  margin-top: 12rpx;
+  font-size: 24rpx;
+  color: #9CA3AF;
+  margin-top: 8rpx;
   line-height: 1.6;
   position: relative;
   z-index: 1;
 }
 
-/* 定位卡片 */
+/* Card Section */
+.card-section {
+  padding: 0 32rpx;
+  margin-bottom: 32rpx;
+}
+
 .location-card {
-  margin: 0 32rpx 32rpx;
-  padding: 28rpx 32rpx;
+  border-radius: 24rpx !important;
+  border: none !important;
+  box-shadow: 0 4rpx 20rpx rgba(0, 0, 0, 0.04) !important;
+}
+
+.location-content {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background-color: #FFFFFF;
-  border-radius: 24rpx;
-  border: 1rpx solid #E8ECF2;
-  box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.02);
 }
 
-.location-card:active {
-  background-color: #F9FAFB;
-}
-
-.location-left {
+.location-main {
   display: flex;
   align-items: center;
   gap: 20rpx;
 }
 
 .location-icon-wrap {
-  width: 72rpx;
-  height: 72rpx;
+  width: 80rpx;
+  height: 80rpx;
+  background: rgba(78, 173, 189, 0.1);
   border-radius: 50%;
-  background-color: rgba(78, 173, 189, 0.1);
   display: flex;
   align-items: center;
   justify-content: center;
-  flex-shrink: 0;
 }
 
 .location-icon-wrap.is-locating {
   animation: pulse 1.5s ease-in-out infinite;
 }
 
-.location-pin { font-size: 32rpx; }
-.location-label { font-size: 22rpx; color: #9CA3AF; display: block; }
-.location-city { font-size: 34rpx; font-weight: 700; color: #4EADBD; display: block; }
-.location-loading { color: #9CA3AF; font-weight: 400; font-size: 28rpx; }
-.location-fail { color: #9CA3AF; font-weight: 400; font-size: 28rpx; }
-
-.location-refresh {
-  width: 64rpx;
-  height: 64rpx;
-  border-radius: 50%;
-  background-color: #F5F6FA;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+.location-label {
+  font-size: 22rpx;
+  color: #9CA3AF;
 }
 
-.refresh-icon { font-size: 36rpx; color: #9CA3AF; }
+.location-city {
+  font-size: 32rpx;
+  font-weight: bold;
+  color: #333;
+}
+.location-city.loading, .location-city.fail {
+  font-weight: normal;
+  color: #9CA3AF;
+}
 
-/* Sections */
+/* Form Section */
 .form-section {
   padding: 0 32rpx;
-  margin-bottom: 32rpx;
+  margin-bottom: 40rpx;
 }
 
-.section-label-row {
+.section-header {
   display: flex;
   align-items: center;
-  gap: 10rpx;
-  margin-bottom: 20rpx;
+  gap: 12rpx;
+  margin-bottom: 24rpx;
+  color: #333;
 }
 
-.section-label-icon { font-size: 28rpx; }
-.section-label-text { font-size: 30rpx; font-weight: 700; color: #1A1A2E; }
-.section-label-hint { font-size: 22rpx; color: #9CA3AF; margin-left: auto; }
+.section-title {
+  font-size: 30rpx;
+  font-weight: 600;
+}
+
+.section-hint {
+  font-size: 24rpx;
+  color: #9CA3AF;
+  margin-left: auto;
+}
 
 /* Duration */
 .duration-grid {
   display: flex;
-  gap: 16rpx;
+  gap: 20rpx;
 }
 
-.duration-item {
+.duration-item-wrapper {
   flex: 1;
-  padding: 32rpx 24rpx;
-  border-radius: 20rpx;
-  background-color: #FFFFFF;
-  border: 1rpx solid #E8ECF2;
-  text-align: center;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8rpx;
+}
+
+.duration-card {
+  border-radius: 24rpx !important;
+  border: 2rpx solid transparent !important;
   transition: all 0.2s;
 }
 
-.duration-item.is-active {
-  background-color: rgba(78, 173, 189, 0.05);
-  border-color: #4EADBD;
-  box-shadow: 0 4rpx 16rpx rgba(78, 173, 189, 0.1);
+.duration-card.is-active {
+  border-color: #4EADBD !important;
+  background: rgba(78, 173, 189, 0.05) !important;
 }
 
-.duration-emoji { font-size: 44rpx; }
-.duration-name { font-size: 30rpx; font-weight: 700; color: #6B7280; }
-.duration-item.is-active .duration-name { color: #4EADBD; }
-.duration-desc { font-size: 22rpx; color: #9CA3AF; }
+.duration-body {
+  display: flex;
+  align-items: center;
+  gap: 20rpx;
+  padding: 8rpx 0;
+}
 
-/* Category grid */
+.duration-icon {
+  font-size: 48rpx;
+}
+
+.duration-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.duration-label {
+  font-size: 28rpx;
+  font-weight: bold;
+  color: #333;
+}
+
+.duration-desc {
+  font-size: 22rpx;
+  color: #9CA3AF;
+}
+
+/* Categories */
 .category-grid {
   display: flex;
   flex-wrap: wrap;
   gap: 16rpx;
 }
 
-.category-item {
-  width: calc(25% - 12rpx);
-  padding: 24rpx 8rpx;
-  border-radius: 20rpx;
-  background-color: #FFFFFF;
-  border: 1rpx solid #E8ECF2;
-  text-align: center;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8rpx;
-  box-sizing: border-box;
-  transition: all 0.2s;
+.cat-tag {
+  --wd-tag-large-padding: 16rpx 28rpx;
+  --wd-tag-large-font-size: 26rpx;
 }
 
-.category-item.is-active {
-  background-color: rgba(78, 173, 189, 0.08);
-  border-color: #4EADBD;
+:deep(.wd-tag--primary) {
+  background-color: #4EADBD !important;
 }
-
-.category-emoji { font-size: 36rpx; }
-.category-name { font-size: 22rpx; color: #6B7280; }
-.category-item.is-active .category-name { color: #4EADBD; font-weight: 600; }
 
 /* Suggestions */
-.suggest-section {
-  padding: 0 32rpx;
-  margin-bottom: 32rpx;
-}
-
 .suggest-scroll {
   white-space: nowrap;
-  margin-top: 4rpx;
 }
 
 .suggest-list {
-  display: inline-flex;
-  gap: 12rpx;
+  display: flex;
+  gap: 16rpx;
   padding: 4rpx 0;
 }
 
-.suggest-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 8rpx;
-  padding: 16rpx 24rpx;
-  border-radius: 999rpx;
-  background-color: #FFFFFF;
-  border: 1rpx solid #E8ECF2;
-  white-space: nowrap;
-  transition: all 0.2s;
+.suggest-tag {
+  flex-shrink: 0;
 }
-
-.suggest-chip.is-active {
-  background-color: rgba(78, 173, 189, 0.1);
-  border-color: #4EADBD;
-}
-
-.suggest-chip:active { opacity: 0.7; }
-.suggest-chip-icon { font-size: 24rpx; }
-.suggest-chip-text { font-size: 24rpx; color: #6B7280; }
-.suggest-chip.is-active .suggest-chip-text { color: #4EADBD; font-weight: 600; }
 
 /* Submit */
 .submit-section {
-  padding: 16rpx 32rpx 40rpx;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
+  padding: 20rpx 48rpx 60rpx;
+  text-align: center;
 }
 
-.submit-btn {
-  width: 100%;
-  height: 100rpx;
-  background: linear-gradient(135deg, #4EADBD 0%, #76C8D5 100%);
-  border: none;
-  border-radius: 999rpx;
+.btn-content {
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 12rpx;
-  box-shadow: 0 8rpx 24rpx rgba(78, 173, 189, 0.3);
 }
 
-.submit-btn[disabled] {
-  opacity: 0.4;
-  box-shadow: none;
+.btn-spark {
+  font-size: 32rpx;
 }
 
-.submit-btn:active { opacity: 0.85; }
-
-.submit-icon { font-size: 32rpx; color: #FFFFFF; }
-.submit-text { font-size: 32rpx; font-weight: 700; color: #FFFFFF; letter-spacing: 4rpx; }
-.submit-hint { font-size: 24rpx; color: #9CA3AF; margin-top: 20rpx; }
+.submit-hint {
+  font-size: 24rpx;
+  color: #9CA3AF;
+  margin-top: 24rpx;
+}
 
 @keyframes pulse {
-  0%, 100% { transform: scale(1); opacity: 1; }
-  50% { transform: scale(1.05); opacity: 0.7; }
+  0% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.1); opacity: 0.7; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+:deep(.wd-card__title) {
+  display: none;
+}
+
+:deep(.wd-card__content) {
+  padding: 24rpx !important;
 }
 </style>
