@@ -1,7 +1,7 @@
 <template>
   <wd-card custom-class="attraction-card" @click="$emit('tap')">
     <view class="card-image-wrap">
-      <image v-if="imageUrl" :src="imageUrl" mode="aspectFill" class="card-image" @error="$emit('image-error')" />
+      <image v-if="imageUrl && !imgFailed" :src="imageUrl" mode="aspectFill" class="card-image" @error="onImgError" />
       <view v-else class="card-image-placeholder">
         <text class="placeholder-icon">🏛️</text>
       </view>
@@ -27,9 +27,15 @@
 </template>
 
 <script setup lang="ts">
+import { ref } from 'vue'
 import type { Attraction } from '@/types'
 defineProps<{ attraction: Attraction; order: number; imageUrl?: string }>()
 defineEmits<{ (e: 'tap'): void; (e: 'image-error'): void }>()
+
+const imgFailed = ref(false)
+function onImgError() {
+  imgFailed.value = true
+}
 </script>
 
 <style scoped>

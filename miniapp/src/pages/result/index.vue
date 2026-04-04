@@ -61,7 +61,7 @@
               <!-- 地图 -->
               <template v-if="tab.key === 'map'">
                 <view class="map-section">
-                  <map v-if="mapMarkers.length > 0" id="trip-map" class="trip-map" :latitude="mapCenter.latitude" :longitude="mapCenter.longitude" :scale="12" :markers="mapMarkers" :polyline="mapPolyline" show-compass enable-zoom enable-scroll />
+                  <map v-if="mapMarkers.length > 0" id="trip-map" class="trip-map" :latitude="mapCenter.latitude" :longitude="mapCenter.longitude" :include-points="mapIncludePoints" :markers="mapMarkers" :polyline="mapPolyline" show-compass enable-zoom enable-scroll />
                   <view v-if="mapMarkers.length === 0" class="map-empty">
                     <wd-status-tip image="content" tip="暂无景点坐标数据" />
                   </view>
@@ -165,6 +165,12 @@ const mapMarkers = computed(() => {
     })
   })
   return markers
+})
+
+const mapIncludePoints = computed(() => {
+  return mapMarkers.value
+    .filter((m: any) => m.latitude && m.longitude)
+    .map((m: any) => ({ latitude: m.latitude, longitude: m.longitude }))
 })
 
 const mapPolyline = computed(() => {

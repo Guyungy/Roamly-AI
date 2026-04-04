@@ -191,20 +191,19 @@
 
 <script setup lang="ts">
 import { reactive, computed, ref } from 'vue'
-import { onShow, onUnload } from '@dcloudio/uni-app'
+import { onShow } from '@dcloudio/uni-app'
 import LoadingOverlay from '@/components/LoadingOverlay.vue'
 import QuotaWall from '@/components/QuotaWall.vue'
 import { useTripStore } from '@/stores/trip'
 import { useQuotaStore } from '@/stores/quota'
-import { useHistoryStore } from '@/stores/history'
-import { generateTripPlan } from '@/services/api'
+import { useQuotaAction } from '@/composables/useQuotaAction'
+import { usePlanSubmit } from '@/composables/usePlanSubmit'
 import type { TripFormData } from '@/types'
 
 const tripStore = useTripStore()
 const quotaStore = useQuotaStore()
-const historyStore = useHistoryStore()
-const showQuotaWall = ref(false)
-const pollTask = ref<{ cancel: () => void } | null>(null)
+const { showQuotaWall, checkQuota, handleWatchAd, handleInvite } = useQuotaAction()
+const { submitPlan } = usePlanSubmit()
 
 const todayStr = computed(() => {
   const d = new Date()
@@ -213,10 +212,6 @@ const todayStr = computed(() => {
 
 onShow(() => {
   quotaStore.ensureToday()
-})
-
-onUnload(() => {
-  pollTask.value?.cancel()
 })
 
 function goToProfile() {
@@ -293,95 +288,20 @@ function onEndDateChange(e: any) {
 
 async function handleSubmit() {
   if (!canSubmit.value) return
-
-  // 检查次数
-  quotaStore.ensureToday()
-  if (!quotaStore.canPlan) {
-    showQuotaWall.value = true
-    return
+  if (!checkQuota()) return
+  
+  const submitData: TripFormData = {
+    city: formData.city.trim(),
+    start_date: formData.start_date,
+    end_date: formData.end_date,
+    travel_days: travelDays.value,
+    transportation: formData.transportation,
+    accommodation: formData.accommodation,
+    preferences: formData.preferences,
+    free_text_input: formData.free_text_input,
   }
-
-  tripStore.setLoading(true)
-  tripStore.setProgress('正在初始化智能体...')
-
-  try {
-    const submitData: TripFormData = {
-      city: formData.city.trim(),
-      start_date: formData.start_date,
-      end_date: formData.end_date,
-      travel_days: travelDays.value,
-      transportation: formData.transportation,
-      accommodation: formData.accommodation,
-      preferences: formData.preferences,
-      free_text_input: formData.free_text_input,
-    }
-
-    const task = generateTripPlan(submitData, (progress) => {
-      tripStore.setProgress(progress)
-    })
-    pollTask.value = task
-    const response = await task.promise
-
-    if (response.success && response.data) {
-      // 扣减次数
-      quotaStore.consume()
-      // 保存到历史记录
-      historyStore.add(response.data, response.graph_data)
-      // 设置当前行程
-      tripStore.setTripPlan(response.data, response.graph_data)
-      tripStore.setLoading(false)
-      uni.navigateTo({ url: '/pages/result/index' })
-    } else {
-      throw new Error(response.message || '规划失败')
-    }
-  } catch (err: any) {
-    tripStore.setLoading(false)
-    uni.showToast({
-      title: err.message || '规划失败，请重试',
-      icon: 'none',
-      duration: 3000,
-    })
-  }
-}
-
-function handleWatchAd() {
-  // #ifdef MP-WEIXIN
-  if (wx.createRewardedVideoAd) {
-    const ad = wx.createRewardedVideoAd({ adUnitId: 'adunit-placeholder' })
-    ad.onClose((res: any) => {
-      if (res && res.isEnded) {
-        quotaStore.rewardByAd()
-        showQuotaWall.value = false
-        uni.showToast({ title: '+1次规划机会', icon: 'success' })
-      }
-    })
-    ad.onError(() => uni.showToast({ title: '广告加载失败', icon: 'none' }))
-    ad.show().catch(() => ad.load().then(() => ad.show()))
-    return
-  }
-  // #endif
-  // 测试环境模拟
-  quotaStore.rewardByAd()
-  showQuotaWall.value = false
-  uni.showToast({ title: '[测试] +1次', icon: 'success' })
-}
-
-function handleInvite() {
-  showQuotaWall.value = false
-  uni.showModal({
-    title: '邀请好友',
-    content: '分享给好友，好友首次使用后你将获得 3 次规划机会！',
-    confirmText: '去分享',
-    confirmColor: '#FF6B35',
-    success: (res) => {
-      if (res.confirm) {
-        // #ifndef MP-WEIXIN
-        quotaStore.rewardByInvite()
-        uni.showToast({ title: '[测试] +3次', icon: 'success' })
-        // #endif
-      }
-    }
-  })
+  
+  await submitPlan(submitData)
 }
 </script>
 

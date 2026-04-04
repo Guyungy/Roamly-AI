@@ -77,11 +77,17 @@
 </template>
 
 <script setup lang="ts">
+import { onPullDownRefresh } from '@dcloudio/uni-app'
 import { useHistoryStore, type HistoryItem } from '@/stores/history'
 import { useTripStore } from '@/stores/trip'
 
 const historyStore = useHistoryStore()
 const tripStore = useTripStore()
+
+onPullDownRefresh(() => {
+  // history is local, just stop the animation
+  uni.stopPullDownRefresh()
+})
 
 function openTrip(item: HistoryItem) {
   tripStore.setTripPlan(item.tripPlan, item.graphData)

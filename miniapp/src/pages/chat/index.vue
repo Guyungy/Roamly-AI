@@ -85,6 +85,8 @@
     <view class="chat-input-area safe-area-bottom">
       <view class="input-row">
         <wd-input
+          :adjust-position="true"
+          :cursor-spacing="20"
           class="chat-input"
           v-model="inputText"
           placeholder="有什么想问的？"
@@ -108,11 +110,17 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, nextTick } from 'vue'
+import { ref, computed, nextTick, onUnmounted } from 'vue'
 import { onShareAppMessage } from '@dcloudio/uni-app'
 import { useTripStore } from '@/stores/trip'
 import { chatWithTrip } from '@/services/api'
 import type { ChatMessage } from '@/types'
+
+let chatAborted = false
+
+onUnmounted(() => {
+  chatAborted = true
+})
 
 const tripStore = useTripStore()
 
@@ -161,6 +169,8 @@ async function sendMessage(text?: string) {
       trip_plan: tripStore.tripPlan as any,
       history: messages.value.slice(0, -1),
     })
+
+    if (chatAborted) return
 
     if (response.success && response.reply) {
       messages.value.push({ role: 'assistant', content: response.reply })

@@ -140,9 +140,11 @@ import { computed } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import { useQuotaStore } from '@/stores/quota'
 import { useHistoryStore } from '@/stores/history'
+import { useQuotaAction } from '@/composables/useQuotaAction'
 
 const quotaStore = useQuotaStore()
 const historyStore = useHistoryStore()
+const { handleWatchAd: watchAd, handleInvite: inviteFriend } = useQuotaAction()
 
 onShow(() => {
   quotaStore.ensureToday()
@@ -161,48 +163,6 @@ const quotaPercentage = computed(() => {
   const total = 5 + 3 + 10 // 假设一个最大基数
   return Math.min(100, (quotaStore.totalRemaining / total) * 100)
 })
-
-function watchAd() {
-  if (quotaStore.adCanWatch <= 0) {
-    uni.showToast({ title: '今日广告次数已达上限', icon: 'none' })
-    return
-  }
-  // #ifdef MP-WEIXIN
-  if (wx.createRewardedVideoAd) {
-    const ad = wx.createRewardedVideoAd({ adUnitId: 'adunit-placeholder' })
-    ad.onClose((res: any) => {
-      if (res && res.isEnded) {
-        quotaStore.rewardByAd()
-        uni.showToast({ title: '+1次规划机会！', icon: 'success' })
-      } else {
-        uni.showToast({ title: '需完整观看才能获得奖励', icon: 'none' })
-      }
-    })
-    ad.onError(() => uni.showToast({ title: '广告加载失败', icon: 'none' }))
-    ad.show().catch(() => ad.load().then(() => ad.show()))
-    return
-  }
-  // #endif
-  quotaStore.rewardByAd()
-  uni.showToast({ title: '[测试] +1次', icon: 'success' })
-}
-
-function inviteFriend() {
-  uni.showModal({
-    title: '邀请好友',
-    content: '将小程序分享给好友，好友首次使用后你将获得 3 次规划机会！',
-    confirmText: '去分享',
-    confirmColor: '#FF6B35',
-    success: (res) => {
-      if (res.confirm) {
-        // #ifndef MP-WEIXIN
-        quotaStore.rewardByInvite()
-        uni.showToast({ title: '[测试] +3次', icon: 'success' })
-        // #endif
-      }
-    }
-  })
-}
 
 function clearHistory() {
   if (historyStore.isEmpty) {

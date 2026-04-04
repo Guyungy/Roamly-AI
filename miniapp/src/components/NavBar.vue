@@ -1,12 +1,12 @@
 <template>
   <wd-navbar
-    :title="title"
+    :title="title || '出门啦'"
     :left-arrow="showBack"
     :safe-area-inset-top="true"
     :fixed="true"
     :placeholder="true"
     :bordered="true"
-    custom-style="background: #FFFFFF;"
+    custom-style="background: var(--color-bg-primary, #FFFFFF);"
     @click-left="handleBack"
   >
     <template #title>
@@ -49,6 +49,6 @@ function handleBack() {
 .brand-name {
   font-size: 34rpx;
   font-weight: 800;
-  color: #FF6B35;
+  color: var(--color-brand, #FF6B35);
 }
 </style>

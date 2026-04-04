@@ -28,6 +28,7 @@
       "path": "pages/history/index",
       "style": {
         "navigationStyle": "custom",
+        "enablePullDownRefresh": true,
         "backgroundColor": "#F5F6FA",
         "backgroundColorTop": "#FFFFFF",
         "backgroundColorBottom": "#F5F6FA"
@@ -42,23 +43,25 @@
         "backgroundColorBottom": "#F5F6FA"
       }
     },
+  ],
+  "subPackages": [
     {
-      "path": "pages/result/index",
-      "style": {
-        "navigationStyle": "custom",
-        "backgroundColor": "#F5F6FA",
-        "backgroundColorTop": "#FFFFFF",
-        "backgroundColorBottom": "#F5F6FA"
-      }
+      "root": "pages/result",
+      "pages": [
+        {
+          "path": "index",
+          "style": { "navigationStyle": "custom", "backgroundColor": "#F5F6FA" }
+        }
+      ]
     },
     {
-      "path": "pages/chat/index",
-      "style": {
-        "navigationStyle": "custom",
-        "backgroundColor": "#F5F6FA",
-        "backgroundColorTop": "#FFFFFF",
-        "backgroundColorBottom": "#F5F6FA"
-      }
+      "root": "pages/chat",
+      "pages": [
+        {
+          "path": "index",
+          "style": { "navigationStyle": "custom", "backgroundColor": "#F5F6FA" }
+        }
+      ]
     }
   ],
   "globalStyle": {

@@ -151,34 +151,30 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { onShow, onUnload } from '@dcloudio/uni-app'
+import { onShow } from '@dcloudio/uni-app'
 import NavBar from '@/components/NavBar.vue'
 import LoadingOverlay from '@/components/LoadingOverlay.vue'
 import QuotaWall from '@/components/QuotaWall.vue'
 import { useTripStore } from '@/stores/trip'
 import { useQuotaStore } from '@/stores/quota'
-import { useHistoryStore } from '@/stores/history'
-import { generateTripPlan, reverseGeocode as apiReverseGeocode } from '@/services/api'
+import { useQuotaAction } from '@/composables/useQuotaAction'
+import { usePlanSubmit } from '@/composables/usePlanSubmit'
+import { reverseGeocode as apiReverseGeocode } from '@/services/api'
 import type { TripFormData } from '@/types'
 
 const tripStore = useTripStore()
 const quotaStore = useQuotaStore()
-const historyStore = useHistoryStore()
+const { showQuotaWall, checkQuota, handleWatchAd, handleInvite } = useQuotaAction()
+const { submitPlan } = usePlanSubmit()
 
 const currentCity = ref('')
 const locating = ref(false)
 const selectedDuration = ref<'half' | 'full'>('half')
 const selectedCategories = ref<string[]>([])
 const extraText = ref('')
-const showQuotaWall = ref(false)
-const pollTask = ref<{ cancel: () => void } | null>(null)
 
 onShow(() => {
   quotaStore.ensureToday()
-})
-
-onUnload(() => {
-  pollTask.value?.cancel()
 })
 
 onMounted(() => {
@@ -362,103 +358,33 @@ function getTodayStr(): string {
 
 async function handleSubmit() {
   if (!canSubmit.value) return
+  if (!checkQuota()) return
 
-  quotaStore.ensureToday()
-  if (!quotaStore.canPlan) {
-    showQuotaWall.value = true
-    return
+  const today = getTodayStr()
+  const durationDesc = selectedDuration.value === 'half' ? '半天（约3-4小时）' : '一整天（约6-8小时）'
+  const categoryDesc = selectedCategories.value.length > 0
+    ? selectedCategories.value.join('、')
+    : '随便逛逛'
+
+  let freeText = `这是一次${durationDesc}的短途出行，从${currentCity.value}出发，不需要住宿。`
+  freeText += `\n偏好类型：${categoryDesc}。`
+  if (extraText.value) {
+    freeText += `\n额外要求：${extraText.value}。`
+  }
+  freeText += `\n请根据出行时长合理安排景点数量，不要太赶。半天安排2-3个地点，一天安排4-5个地点。`
+
+  const submitData: TripFormData = {
+    city: currentCity.value,
+    start_date: today,
+    end_date: today,
+    travel_days: 1,
+    transportation: '公共交通',
+    accommodation: '无需住宿',
+    preferences: selectedCategories.value,
+    free_text_input: freeText,
   }
 
-  tripStore.setLoading(true)
-  tripStore.setProgress('正在定位周边好去处...')
-
-  try {
-    const today = getTodayStr()
-    const durationDesc = selectedDuration.value === 'half' ? '半天（约3-4小时）' : '一整天（约6-8小时）'
-    const categoryDesc = selectedCategories.value.length > 0
-      ? selectedCategories.value.join('、')
-      : '随便逛逛'
-
-    let freeText = `这是一次${durationDesc}的短途出行，从${currentCity.value}出发，不需要住宿。`
-    freeText += `\n偏好类型：${categoryDesc}。`
-    if (extraText.value) {
-      freeText += `\n额外要求：${extraText.value}。`
-    }
-    freeText += `\n请根据出行时长合理安排景点数量，不要太赶。半天安排2-3个地点，一天安排4-5个地点。`
-
-    const submitData: TripFormData = {
-      city: currentCity.value,
-      start_date: today,
-      end_date: today,
-      travel_days: 1,
-      transportation: '公共交通',
-      accommodation: '无需住宿',
-      preferences: selectedCategories.value,
-      free_text_input: freeText,
-    }
-
-    const task = generateTripPlan(submitData, (progress) => {
-      tripStore.setProgress(progress)
-    })
-    pollTask.value = task
-    const response = await task.promise
-
-    if (response.success && response.data) {
-      quotaStore.consume()
-      historyStore.add(response.data, response.graph_data)
-      tripStore.setTripPlan(response.data, response.graph_data)
-      tripStore.setLoading(false)
-      uni.navigateTo({ url: '/pages/result/index' })
-    } else {
-      throw new Error(response.message || '规划失败')
-    }
-  } catch (err: any) {
-    tripStore.setLoading(false)
-    uni.showToast({
-      title: err.message || '规划失败，请重试',
-      icon: 'none',
-      duration: 3000,
-    })
-  }
-}
-
-function handleWatchAd() {
-  // #ifdef MP-WEIXIN
-  if (wx.createRewardedVideoAd) {
-    const ad = wx.createRewardedVideoAd({ adUnitId: 'adunit-placeholder' })
-    ad.onClose((res: any) => {
-      if (res && res.isEnded) {
-        quotaStore.rewardByAd()
-        showQuotaWall.value = false
-        uni.showToast({ title: '+1次规划机会', icon: 'success' })
-      }
-    })
-    ad.onError(() => uni.showToast({ title: '广告加载失败', icon: 'none' }))
-    ad.show().catch(() => ad.load().then(() => ad.show()))
-    return
-  }
-  // #endif
-  quotaStore.rewardByAd()
-  showQuotaWall.value = false
-  uni.showToast({ title: '[测试] +1次', icon: 'success' })
-}
-
-function handleInvite() {
-  showQuotaWall.value = false
-  uni.showModal({
-    title: '邀请好友',
-    content: '分享给好友，好友首次使用后你将获得 3 次规划机会！',
-    confirmText: '去分享',
-    confirmColor: '#4EADBD',
-    success: (res) => {
-      if (res.confirm) {
-        // #ifndef MP-WEIXIN
-        quotaStore.rewardByInvite()
-        uni.showToast({ title: '[测试] +3次', icon: 'success' })
-        // #endif
-      }
-    }
-  })
+  await submitPlan(submitData)
 }
 </script>
 
