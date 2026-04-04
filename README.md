@@ -1,213 +1,290 @@
-# 旅途星辰 (TripStar) - AI 旅行智能体
+# 出门啦 (Chumenla) — AI 出行规划助手
 
-> **基于 HelloAgents 框架打造的多智能体协作文旅规划平台**
-<img width="1418" height="619" alt="PixPin_2026-03-11_00-38-31" src="https://github.com/user-attachments/assets/43d55fdf-beb2-47ea-b4a0-219613524776" />
+> **多智能体协作 × 小程序 × 说走就走**
+
 <p align="center">
   <img src="https://img.shields.io/badge/license-GPL--2.0-orange">
-  <img src="https://img.shields.io/badge/version-v0.2.0-green">
-  <img src="https://img.shields.io/badge/Docker-Build-blue?logo=docker">
+  <img src="https://img.shields.io/badge/version-v2.0.0-FF6B35">
   <img src="https://img.shields.io/badge/python-3.10+-blue.svg">
-  <img src="https://img.shields.io/badge/vue-3.x-brightgreen.svg">
   <img src="https://img.shields.io/badge/FastAPI-0.100+-teal.svg">
+  <img src="https://img.shields.io/badge/Vue-3.x-brightgreen.svg">
+  <img src="https://img.shields.io/badge/uni--app-Vue3-4CD964.svg">
+  <img src="https://img.shields.io/badge/Docker-Ready-2496ED?logo=docker">
 </p>
 
-> [!IMPORTANT]
-> 
-> 可直接体验项目，为避免拥挤可自行部署：[旅途星辰 (TripStar) - AI 旅行智能体](https://modelscope.cn/studios/lcclxy/Journey-to-the-China)
-> 
-> 其中包括：旅行计划、景点地图概览、预算明细、每日行程：行程描述、交通方式、住宿推荐、景点安排（地址、游览时长、景点描述）、餐饮安排、天气信息、知识图谱可视化、沉浸式伴游 AI 问答......
+## 这是什么？
 
-## 项目简介
+**出门啦** 是一个 AI 驱动的出行规划工具。告诉它你想去哪、玩几天、喜欢什么，多个 AI 智能体会像旅行管家一样协作——查景点、看天气、找酒店、排路线——帮你生成一份完整的行程计划。
 
-**旅途星辰 (TripStar)** 是一个创新的 AI 文旅智能体应用，基于 HelloAgents 框架打造的多智能体协作文旅规划平台，旨在解决用户在规划旅行时面临的“信息过载”和“决策疲劳”问题。
+支持两种场景：
 
-有别于传统的旅游攻略网站，本项目采用了基于 **大语言模型 (LLM)** 和 **多智能体 (Multi-Agent)** 协作架构的创新模式。它能像一位经验丰富的人类旅行管家一样，全面考虑用户的个性化需求（偏好设置：交通方式、住宿风格、旅行兴趣、特殊需求等），自动搜索旅行信息、查询当地天气、精选酒店并规划最优景点路线，以**快速完成旅游攻略**。
+| 场景 | 描述 |
+|---|---|
+| **长途旅行** | 输入目的地城市、日期、偏好，生成多日行程 |
+| **附近出行** | 自动定位当前城市，选择半天/一天 + 兴趣类型，快速推荐 |
 
-### 核心亮点
+三端可用：**Web 网页** / **微信小程序** / **H5**
 
-* **多语言支持**: 深度集成 Vue I18n，系统界面及 AI 问答全程支持多语言无缝切换，为全球旅行者打造无障碍的行程规划体验。
-* **高定主题互动地图**: 深度集成高德地图 JS API 2.0，动态绘制“起点-景点-终点”的真实经纬度打卡路线，提供高级定制底图配色，一眼预览景点位置方便安排行程。
-* **精准预算明细面板**: 智能汇总门票、餐饮、住宿与交通等多维度花销账单，提供直观的财务面板报表，让出行预算尽在掌握。
-* **多智能体协作协同**: 采用分工明确的多个 Agent（如景点规划师、天气预报员、酒店推荐专家），通过工作流 (Workflow) 协同完成复杂的旅行规划任务。
-* **知识图谱可视化**: 将生成的行程数据实时转换为节点关系图，直观展示“城市-天数-行程节点-预算”的空间结构。
-* **沉浸式伴游 AI 问答**: 在生成报告后，提供悬浮式 AI 问答窗口（左下角），AI 拥有完整行程的上下文记忆，用户可随时针对行程细节（如票价、适宜性）进行追问。
-* **奢华暗黑玻璃拟物风**: 全新设计的暗黑系玻璃拟物化 (Dark Luxury Glassmorphism) 界面，提供极具沉浸感的高级视觉体验。
 ---
-> 举个例子要去中国——洛阳（目前只支持国内）玩耍，只需要填写地点、日期、偏好设置，即可等待行程规划的结果，一眼预览如何安排旅游景点
-<img width="1234" height="564" alt="image" src="https://github.com/user-attachments/assets/76ea87ea-e9ed-4248-9f34-91394a0b5308" />
 
+## 核心功能
+
+- **多智能体协作** — 景点规划师、天气预报员、酒店推荐专家各司其职，总控 Agent 统筹编排
+- **长途 + 短途** — 多天深度游和半天随心逛，两种模式一个入口
+- **自动定位** — 附近出行自动获取位置，通过后端安全调用高德逆地理编码
+- **智能推荐** — 根据选择的兴趣类型（美食、亲子、文艺……）动态推荐标签
+- **完整行程** — 每日景点路线、餐饮安排、住宿推荐、交通方式，一步到位
+- **预算明细** — 门票、餐饮、住宿、交通分项统计
+- **天气预报** — 目标日期天气一目了然
+- **地图路线** — 景点标记 + 连线，直观预览路线
+- **AI 问答** — 生成行程后可随时追问细节
+- **历史行程** — 本地持久化，随时回看
+- **变现体系** — 每日免费 1 次，看广告 +1，邀请好友 +3
+
+---
 
 ## 系统架构
 
-本项目采用标准的前后端分离架构，分为前端 Vue 交互层、后端 FastAPI 服务层和 LLM/Agents 的智能推理层。
+```
+┌─────────────────────────────────────────────────────┐
+│  客户端                                              │
+│                                                      │
+│  小程序 (uni-app)          Web (Vue 3 + Vite)        │
+│  ├── 长途规划               ├── Landing 表单          │
+│  ├── 附近出行 (定位)         ├── Result 行程详情       │
+│  ├── 历史行程               ├── AI Chat 问答          │
+│  ├── AI 问答                └── Pinia 状态管理        │
+│  ├── 我的 (次数/广告/邀请)                            │
+│  └── Pinia + uni.request                             │
+│              │                       │                │
+│              └───────┬───────────────┘                │
+│                      ↓                                │
+├──────────────────────────────────────────────────────┤
+│  后端 API (FastAPI)                                   │
+│                                                      │
+│  POST /api/trip/plan      → 提交规划任务 (返回 task_id)│
+│  GET  /api/trip/status/:id → 轮询任务状态              │
+│  POST /api/chat/ask       → AI 行程问答               │
+│  GET  /api/map/reverse-geocode → 逆地理编码           │
+│  GET  /api/poi/photo      → 景点图片                  │
+│  GET  /health             → 健康检查                   │
+│                                                      │
+│  CORS 可配置 · lifespan 生命周期 · 任务超时+自动清理    │
+├──────────────────────────────────────────────────────┤
+│  智能体引擎 (HelloAgents + MCP)                       │
+│                                                      │
+│  总控 Agent ──┬── 景点规划 Agent → 高德 MCP (POI搜索)  │
+│               ├── 天气预报 Agent → 天气查询工具         │
+│               └── 酒店推荐 Agent → 高德 MCP (酒店搜索)  │
+│                      ↓                                │
+│              结构化 JSON 输出                          │
+└─────────────────────────────────────────────────────┘
+```
 
-```mermaid
-graph TD
-    subgraph G1 ["前端交互视图"]
-        A1["参数输入 Home.vue"]
-        A2["沉浸加载动画"]
-        A3["高定路书 Result.vue"]
-        A4["知识图谱侧边栏"]
-        A5["AI 旅行智能体浮窗"]
-    end
+### 异步轮询机制
 
-    subgraph G2 ["后端网关"]
-        B1["异步轮询机制 <br/> POST/plan & GET/status"]
-        B2["上下文伴游问答<br/>POST/chat/ask"]
-    end
+LLM 生成行程需要 1~3 分钟，直接等会导致网关超时。解决方案：
 
-    subgraph G3 ["多智能体协同引擎"]
-        C1["旅程总控 Agent"]
-        C2["景点规划 Agent"]
-        C3["天气预报 Agent"]
-        C4["酒店推荐 Agent"]
-    end
+1. `POST /api/trip/plan` — 立即返回 `task_id`，后台 `asyncio.create_task` 执行
+2. 客户端每 3 秒轮询 `GET /api/trip/status/{task_id}`
+3. 后端有 10 分钟任务超时 + 30 分钟 TTL 自动清理，防止内存泄漏
 
-    subgraph G4 ["服务层"]
-        D1["LLM模型API <br/> doubao-seed-1-8-251228"]
-        D2["高德 MCP Server <br/> 地理编码/POI搜索"]
-        D3["天气/时间检索工具"]
-    end
+---
 
-    %% 交互连线
-    A1 --> B1
-    A3 <--> B1
-    A5 <--> B2
+## 项目结构
 
-    B1 --> C1
-    B2 --> D1
-
-    C1 --> C2
-    C1 --> C3
-    C1 --> C4
-
-    C2 <--> D2
-    C3 <--> D3
-    C4 <--> D2
-
+```
+出门啦/
+├── backend/                        # Python 后端 (纯 API)
+│   ├── app/
+│   │   ├── api/routes/             # 路由: trip, chat, map, poi
+│   │   ├── agents/                 # 多智能体编排 (HelloAgents)
+│   │   ├── services/               # 业务: LLM, 高德MCP, Unsplash, 知识图谱
+│   │   ├── models/                 # Pydantic 数据模型
+│   │   └── config.py               # 配置管理 (pydantic-settings)
+│   ├── requirements.txt
+│   ├── run.py                      # 入口
+│   └── Dockerfile
+│
+├── frontend/                       # Vue 3 Web 端
+│   ├── src/
+│   │   ├── views/                  # Landing (表单) / Result (行程)
+│   │   ├── components/             # AIChat, NavBar, OverviewCard
+│   │   ├── stores/                 # Pinia 状态管理
+│   │   ├── services/               # Axios API 层
+│   │   ├── i18n/                   # 国际化 (中/英/日)
+│   │   └── types/                  # TypeScript 类型
+│   ├── vite.config.ts
+│   └── Dockerfile
+│
+├── miniapp/                        # uni-app 小程序端
+│   ├── src/
+│   │   ├── pages/
+│   │   │   ├── landing/            # Tab 1: 长途规划
+│   │   │   ├── nearby/             # Tab 2: 附近出行 (定位)
+│   │   │   ├── history/            # Tab 3: 历史行程
+│   │   │   ├── profile/            # Tab 4: 我的 (次数/广告/邀请)
+│   │   │   ├── result/             # 子页: 行程详情
+│   │   │   └── chat/               # 子页: AI 问答
+│   │   ├── components/             # NavBar, DayCard, AttractionCard, WeatherCard,
+│   │   │                           # BudgetPanel, LoadingOverlay, QuotaWall
+│   │   ├── stores/                 # trip (行程), quota (次数), history (历史)
+│   │   ├── services/               # uni.request API 适配器
+│   │   ├── types/                  # 与 Web 端共享的类型定义
+│   │   ├── utils/                  # 格式化工具
+│   │   └── static/                 # TabBar 图标 (行李箱/定位针/日历/人形)
+│   ├── package.json
+│   └── vite.config.ts
+│
+├── docker-compose.yaml             # 前后端双容器编排
+└── README.md
 ```
 
 ---
 
-## 核心功能与工作流
+## 快速开始
 
-### 1. 异步轮询任务系统 (解决网关超时)
+### 环境要求
 
-针对 LLM 生成超长文本易导致 504 Gateway Timeout 的痛点，重构了后端的任务调度机制。
+- Python 3.10+
+- Node.js 18+
+- 高德地图 Key (Web 服务类型)
+- LLM API Key (兼容 OpenAI 格式，如豆包、通义千问、DeepSeek)
 
-* **`POST /api/trip/plan`**: 立即返回 `task_id`，将长达数分钟的推理任务推入后台 `asyncio.create_task`。
-* **`GET /api/trip/status/{task_id}`**: 前端每 3 秒发起一次轻量请求，实时获取当前处理进度（如"🔍 正在搜索景点..."），直至状态变为 `completed`。
-
-### 2. 多智能体架构 (Agentic Workflow)
-
-主控 Agent 接收到用户自然语言指令后，基于 React 模式拆解任务：
-
-1. **并发启动**: 景点规划师调用地图工具寻找适宜 POI；天气管家查询目标日期的气候状况；机酒专员根据预算寻找合适落脚点。
-2. **路线编排**: 主控 Agent 收集三方数据，进行统筹优化，计算两两景点间的距离和最优游玩顺序，避免行程折返跑。
-3. **结果聚合**: 最终输出包含预算明细、逐日行程、防坑指南等详细参数的结构化 JSON。
-
-### 3. 数据驱动的动态组件渲染
-
-前端不再是写死的静态展示，而是通过响应式变量读取 JSON 数据：
-
-* **高德地图 JS API 2.0 组件**: 动态读取 POI 经纬度，绘制连线与标记。
-* **ECharts 知识图谱组件**: 将树状的旅行层级转化为关系网络（图数据库雏形）。
-
----
-
-## 快速部署与运行指北
-
-### 环境准备
-
-* Python 3.10+
-* Node.js 18+
-* 大模型 API Key（推荐使用兼容 OpenAI 格式的服务商，如豆包、阿里云百炼）
-* 高德地图两种key： Web服务 、 Web端(JS API) (其**安全密钥 JSCode**配置在index.html中)（[高德api](https://lbs.amap.com/)）
-* 图片抓取api（[Unsplash API](https://unsplash.com/developers)）
-* 安装 `uv` 包管理器
-
-### 1. 后端启动
+### 1. 后端
 
 ```bash
-# 进入后端主目录
 cd backend
 
 # 创建虚拟环境
 python -m venv venv
+source venv/bin/activate        # Windows: venv\Scripts\activate
 
-# 激活虚拟环境
-source venv/bin/activate  # Windows: venv\Scripts\activate
-
-# 安装项目依赖包
+# 安装依赖
 pip install -r requirements.txt
 
-# 复制配置文件并填入相应的 API KEY
+# 配置环境变量
 cp .env.example .env
-# [必填] LLM_API_KEY, LLM_BASE_URL, LLM_MODEL_ID（选择有结构化输出能力的模型）
-# [必填] VITE_AMAP_WEB_KEY (高德地图 web服务 类型的key)
-# [必填] Unsplash API Credentials（创建应用后的key）
+# 编辑 .env，填入：
+#   LLM_API_KEY=你的大模型API密钥
+#   LLM_BASE_URL=https://api.openai.com/v1 (或其他兼容端点)
+#   LLM_MODEL_ID=模型名称
+#   VITE_AMAP_WEB_KEY=高德Web服务Key
+#   UNSPLASH_ACCESS_KEY=Unsplash图片Key (可选)
 
-# 启动 FastAPI (推荐通过 uvicorn)
-uvicorn app.api.main:app --host 0.0.0.0 --port 8000 --reload
+# 启动
+python run.py
+# 或: uvicorn app.api.main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
-API 启动后，您可以访问 `http://localhost:8000/docs` 查看互动文档。
+API 文档：`http://localhost:8000/docs`
 
-### 2. 前端启动
+### 2. Web 前端
 
 ```bash
-# 进入前端主目录
 cd frontend
-
-# 使用 npm (或 pnpm/yarn) 安装依赖
 npm install
-
-# 配置前端环境变量，创建 .env 文件
-# [必填] VITE_AMAP_WEB_KEY 与后端保持一致
-# [必填] VITE_AMAP_WEB_JS_KEY 必须是 Web端(JS API) 类型的key
-# 另外，由于 JS API 2.0 政策要求，**还需要在 index.html 注入你的安全密钥(securityJsCode)**
-
-# 启动 Vite 开发服务器
 npm run dev
+# 访问 http://localhost:5173
 ```
 
+开发模式下 Vite 会自动代理 `/api` 请求到后端 `localhost:8000`。
 
+### 3. 小程序端
+
+```bash
+cd miniapp
+npm install --legacy-peer-deps
+
+# 开发模式 (微信)
+npx uni -p mp-weixin
+# 用微信开发者工具打开 dist/dev/mp-weixin
+
+# 构建生产版
+npx uni build -p mp-weixin
+# 用微信开发者工具打开 dist/build/mp-weixin
+```
+
+> 小程序需要在 `manifest.json` 填入真实的微信 AppID。
+> `services/api.ts` 中的 `API_BASE_URL` 需指向你的后端地址。
+
+### 4. Docker 部署
+
+```bash
+docker-compose up -d
+# 后端: http://localhost:8000
+# 前端: http://localhost:5173
+```
 
 ---
 
-## 目录结构与关键代码导读
+## 小程序页面一览
 
-```text
-helloagents-trip-planner-new/
-├── backend/                       # Python FastAPI 后端
-│   ├── app/
-│   │   ├── api/routes/            # 核心路由 (trip.py, chat.py)
-│   │   ├── agents/                # 多智能体定义与编排 (trip_planner_agent.py 并发核心)
-│   │   ├── services/              # 业务逻辑封装 (包括 amap_service MCP调用逻辑)
-│   │   └── models/                # Pydantic 类型定义
-│   └── .env                       # LLM 及系统环境变量载体
-│
-├── frontend/                      # Vue 3 互动前端
-│   ├── src/
-│   │   ├── views/                 # 主路由视图 (Home.vue 表单输入; Result.vue 路书展示)
-│   │   ├── components/            # 独立复用的 UI / 背景组件
-│   │   └── services/              # Axois 异步轮询及配置重试逻辑 (api.ts)
-│   ├── index.html                 # 入口挂载及高德地图 SecurityKey 预设
-│   └── package.json
-│
-├── Dockerfile                     # 通用生产发布容器脚本
-└── README.md
-```
+| Tab | 页面 | 功能 |
+|---|---|---|
+| 🧳 长途 | `pages/landing` | 输入目的地、日期、偏好 → AI 生成多日行程 |
+| 📍 附近 | `pages/nearby` | 自动定位 → 选半天/一天 + 兴趣类型 → 快速推荐 |
+| 📅 行程 | `pages/history` | 历史行程列表，点击查看详情 |
+| 👤 我的 | `pages/profile` | 剩余次数、看广告 +1、邀请好友 +3、使用统计 |
+| — | `pages/result` | 行程详情：每日安排 / 预算 / 天气 / 地图 |
+| — | `pages/chat` | AI 问答：基于行程上下文追问细节 |
 
-> 下面是部分运行结果，丰富的功能探索中...
+### 变现模型
 
-<img width="1720" height="754" alt="image" src="https://github.com/user-attachments/assets/e7189304-f17e-43ee-8f62-4c3170de6025" />
+| 方式 | 奖励 | 限制 |
+|---|---|---|
+| 每日免费 | 1 次 | 每天 0:00 重置 |
+| 观看激励视频广告 | +1 次 | 每天最多 5 次 |
+| 邀请好友 | +3 次 | 长期有效，无上限 |
 
-## 后续可扩展方向
+---
 
-1. **配置goole地图服务**: 当前依赖高德地图的mcp服务，为达到全球使用的效果，后续转为goole相关服务。
-2. **小红书mcp的适配**: 针对景点的相关推荐，计划调用小红书mcp进行搜索，完善景点推荐流。
-3. **计划导入功能**: 针对生成计划导出功能添加json，并添加计划导入模块，方便查看之前生成的计划并进行修改。
+## API 接口
 
-## 🙏 致谢
-感谢 [linuxdo](https://linux.do/) 社区的交流、分享与反馈，让 TripStar 的迭代更高效。
+| 方法 | 路径 | 说明 |
+|---|---|---|
+| `POST` | `/api/trip/plan` | 提交行程规划任务，返回 `task_id` |
+| `GET` | `/api/trip/status/:id` | 轮询任务状态和结果 |
+| `POST` | `/api/chat/ask` | AI 行程问答 |
+| `GET` | `/api/map/reverse-geocode` | 经纬度 → 城市名 (逆地理编码) |
+| `GET` | `/api/poi/photo` | 获取景点图片 (Unsplash) |
+| `GET` | `/api/poi/search` | 搜索 POI |
+| `GET` | `/health` | 健康检查 |
+
+完整接口文档：启动后端后访问 `/docs` (Swagger) 或 `/redoc`。
+
+---
+
+## 技术栈
+
+| 层级 | 技术 |
+|---|---|
+| 后端框架 | FastAPI + Uvicorn |
+| 智能体 | HelloAgents (多 Agent 编排) |
+| 工具协议 | MCP (Model Context Protocol) + 高德地图 |
+| LLM | OpenAI 兼容 API |
+| Web 前端 | Vue 3 + TypeScript + Vite + Pinia + Ant Design Vue |
+| 小程序 | uni-app (Vue 3) + Pinia |
+| 地图 | 高德地图 JS API 2.0 (Web) / 小程序原生 map 组件 |
+| 图片 | Unsplash API + pypinyin 中文转拼音搜索 |
+| 部署 | Docker Compose (前后端分离) |
+
+---
+
+## 后续计划
+
+- [ ] 接入 Google Maps，支持海外目的地
+- [ ] 小红书 MCP 适配，融入达人推荐
+- [ ] 行程 PDF 导出
+- [ ] 多用户账号体系
+- [ ] 行程分享与协作编辑
+
+---
+
+## 致谢
+
+感谢 [linuxdo](https://linux.do/) 社区的交流与反馈。
+
+## License
+
+[GPL-2.0](LICENSE)
