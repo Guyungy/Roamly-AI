@@ -1,0 +1,72 @@
+{
+  "pages": [
+    {
+      "path": "pages/landing/index",
+      "style": {
+        "navigationStyle": "custom",
+        "navigationBarTitleText": "",
+        "backgroundColor": "#0a0a0f",
+        "backgroundColorTop": "#0a0a0f",
+        "backgroundColorBottom": "#0a0a0f",
+        "app-plus": {
+          "titleNView": false
+        }
+      }
+    },
+    {
+      "path": "pages/result/index",
+      "style": {
+        "navigationStyle": "custom",
+        "navigationBarTitleText": "",
+        "backgroundColor": "#0a0a0f",
+        "backgroundColorTop": "#0a0a0f",
+        "backgroundColorBottom": "#0a0a0f",
+        "app-plus": {
+          "titleNView": false
+        }
+      }
+    },
+    {
+      "path": "pages/chat/index",
+      "style": {
+        "navigationStyle": "custom",
+        "navigationBarTitleText": "",
+        "backgroundColor": "#0a0a0f",
+        "backgroundColorTop": "#0a0a0f",
+        "backgroundColorBottom": "#0a0a0f"
+      }
+    }
+  ],
+  "globalStyle": {
+    "navigationBarTextStyle": "white",
+    "navigationBarBackgroundColor": "#0a0a0f",
+    "backgroundColor": "#0a0a0f",
+    "backgroundTextStyle": "dark"
+  },
+  "tabBar": {
+    "color": "#666",
+    "selectedColor": "#FFD699",
+    "backgroundColor": "#0d0d15",
+    "borderStyle": "black",
+    "list": [
+      {
+        "pagePath": "pages/landing/index",
+        "text": "规划",
+        "iconPath": "static/tab-plan.png",
+        "selectedIconPath": "static/tab-plan-active.png"
+      },
+      {
+        "pagePath": "pages/result/index",
+        "text": "行程",
+        "iconPath": "static/tab-trip.png",
+        "selectedIconPath": "static/tab-trip-active.png"
+      },
+      {
+        "pagePath": "pages/chat/index",
+        "text": "问问AI",
+        "iconPath": "static/tab-chat.png",
+        "selectedIconPath": "static/tab-chat-active.png"
+      }
+    ]
+  }
+}

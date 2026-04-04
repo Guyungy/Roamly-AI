@@ -1,0 +1,32 @@
+{
+  "name": "旅途星辰",
+  "appid": "__UNI__ROAMLYAI",
+  "description": "AI 智能旅行规划助手",
+  "versionName": "2.0.0",
+  "versionCode": "200",
+  "transformPx": false,
+  "mp-weixin": {
+    "appid": "",
+    "setting": {
+      "urlCheck": false,
+      "es6": true,
+      "postcss": true,
+      "minified": true
+    },
+    "usingComponents": true,
+    "permission": {
+      "scope.userLocation": {
+        "desc": "用于获取您的位置以提供周边推荐"
+      }
+    }
+  },
+  "mp-alipay": {
+    "usingComponents": true
+  },
+  "h5": {
+    "title": "旅途星辰 - AI旅行助手",
+    "router": {
+      "mode": "history"
+    }
+  }
+}
