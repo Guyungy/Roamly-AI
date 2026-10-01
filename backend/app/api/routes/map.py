@@ -7,9 +7,11 @@ from ...models.schemas import (
     POISearchResponse,
     RouteRequest,
     RouteResponse,
+    TransitResponse,
     WeatherResponse
 )
 from ...services.amap_service import get_amap_service
+from ...services.tencent_map_service import get_tencent_map_service
 
 router = APIRouter(prefix="/map", tags=["地图服务"])
 
@@ -136,6 +138,58 @@ async def plan_route(request: RouteRequest):
         raise HTTPException(
             status_code=500,
             detail=f"路线规划失败: {str(e)}"
+        )
+
+
+@router.get(
+    "/transit",
+    response_model=TransitResponse,
+    summary="公交换乘方案",
+    description="根据起终点坐标查询公交换乘方案(腾讯位置服务 REST 直连)"
+)
+async def get_transit(
+    origin: str = Query(..., description="起点, 支持'纬度,经度'(GCJ02)或地址", example="39.984154,116.307490"),
+    destination: str = Query(..., description="终点, 同 origin 格式", example="39.90923,116.397428"),
+    city: Optional[str] = Query(None, description="起点城市", example="北京"),
+    cityd: Optional[str] = Query(None, description="终点城市, 缺省同起点城市")
+):
+    """
+    公交换乘方案
+
+    Args:
+        origin: 起点坐标 "纬度,经度"(GCJ02)或地址
+        destination: 终点坐标
+        city: 起点城市
+        cityd: 终点城市
+
+    Returns:
+        换乘方案列表
+    """
+    try:
+        service = get_tencent_map_service()
+        plans = service.transit_plan(
+            origin=origin,
+            destination=destination,
+            city=city,
+            cityd=cityd,
+        )
+        return TransitResponse(
+            success=True,
+            message="公交换乘方案查询成功",
+            data=plans
+        )
+    except ValueError as e:
+        # Key 未配置等参数级错误 → 500 提示缺失配置
+        print(f"❌ 公交换乘参数错误: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=str(e)
+        )
+    except Exception as e:
+        print(f"❌ 公交换乘方案查询失败: {str(e)}")
+        raise HTTPException(
+            status_code=502,
+            detail=f"公交换乘方案查询失败: {str(e)}"
         )
 
 

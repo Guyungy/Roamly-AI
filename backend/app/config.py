@@ -28,6 +28,9 @@ class Settings(BaseSettings):
     # 高德地图API配置
     vite_amap_web_key: str = ""
 
+    # 腾讯位置服务(WebService) Key配置 — 公交换乘/路线规划 REST 直连
+    tencent_map_key: str = ""
+
     # Unsplash API配置
     unsplash_access_key: str = ""
     unsplash_secret_key: str = ""

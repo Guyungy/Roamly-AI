@@ -256,3 +256,45 @@ class TripChatResponse(BaseModel):
     """行程问答响应"""
     success: bool = Field(default=True, description="是否成功")
     reply: str = Field(..., description="AI回复内容")
+
+
+# ============ 公交换乘数据模型 (P-4) ============
+
+class TransitStep(BaseModel):
+    """换乘单步(一次步行/公交/轨道/出租车)"""
+    mode: str = Field(..., description="交通模式: walking/transit/railway/taxi")
+    type: str = Field(default="", description="换乘类型说明,如 'W1地铁'/'B4公交'")
+    line: str = Field(default="", description="线路名(地铁/公交线路名)")
+    from_station: str = Field(default="", description="上车站/起点名")
+    to_station: str = Field(default="", description="下车站/终点名")
+    stations: List[str] = Field(default=[], description="经停站列表")
+    distance: float = Field(default=0.0, description="本段距离(米)")
+    duration: int = Field(default=0, description="本段耗时(秒)")
+    first_bus_time: str = Field(default="", description="首班时间")
+    last_bus_time: str = Field(default="", description="末班时间")
+    path: List[Location] = Field(default=[], description="本段轨迹点位(按序串起的一段换乘轨迹)")
+
+
+class TransitSegment(BaseModel):
+    """换乘段(一次换乘可能先步行再公交再步行)"""
+    walking: Optional[TransitStep] = Field(default=None, description="步行衔接段")
+    transit: Optional[TransitStep] = Field(default=None, description="公交段")
+    railway: Optional[TransitStep] = Field(default=None, description="轨道段")
+    taxi: Optional[TransitStep] = Field(default=None, description="出租车段")
+    distance: float = Field(default=0.0, description="本段距离(米)")
+    duration: int = Field(default=0, description="本段耗时(秒)")
+
+
+class TransitPlan(BaseModel):
+    """公交换乘方案(一条候选路线)"""
+    distance: float = Field(default=0.0, description="总距离(米)")
+    duration: int = Field(default=0, description="总耗时(秒)")
+    transfer_count: int = Field(default=0, description="换乘次数")
+    segments: List[TransitSegment] = Field(default=[], description="换乘段列表(按序串联)")
+
+
+class TransitResponse(BaseModel):
+    """公交换乘查询响应"""
+    success: bool = Field(..., description="是否成功")
+    message: str = Field(default="", description="消息")
+    data: List[TransitPlan] = Field(default=[], description="换乘方案列表(按推荐度排序)")
