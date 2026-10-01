@@ -266,6 +266,18 @@
                 {{ t('result.mapInfo.routeFallback', { count: routeFallbackCount }) }}
               </p>
             </div>
+
+            <!--
+              附近站点：按"第几天 · 景点"切换查看中心，列出该点附近的
+              地铁/公交站 + 步行可达提示；点击站点会把地图镜头移过去。
+              数据走后端 /api/map/nearby-station，失败时降级到缓存或内置演示数据。
+            -->
+            <NearbyStationPanel
+              v-if="tripPlan && stationCenters.length"
+              :centers="stationCenters"
+              class="map-stations"
+              @focus="handleStationFocus"
+            />
           </div>
         </section>
 
@@ -663,6 +675,8 @@ import Swiper from 'swiper'
 import { Keyboard, Mousewheel } from 'swiper/modules'
 import NavBar from '@/components/NavBar.vue'
 import OverviewAttractionCard from '@/components/OverviewAttractionCard.vue'
+import NearbyStationPanel from '@/components/NearbyStationPanel.vue'
+import type { StationView } from '@/services/nearbyStation'
 import AIChat from '@/components/AIChat.vue'
 import {
   AMAP_MAP_FEATURES,
@@ -715,6 +729,11 @@ const overviewAtEnd = ref(false)
 let map: any = null
 let overviewSwiper: Swiper | null = null
 
+/* 站点聚焦留下的临时标记/信息窗：销毁或下一次聚焦时清掉 */
+let stationOverlays: any[] = []
+let stationWindow: any = null
+const STATION_FOCUS_ZOOM = 15
+
 /**
  * 销毁地图实例。
  * 顺便清掉路线汇总：改预算/删条目会重建地图，残留的旧里程会和新的对不上。
@@ -726,6 +745,9 @@ const destroyMap = () => {
   }
   // 同时摘掉调试句柄，别让它指向一个已经销毁的实例
   delete (window as unknown as { __wbAmapDebug?: unknown }).__wbAmapDebug
+  // 站点聚焦留下的临时标记/信息窗也一并清掉
+  stationOverlays = []
+  stationWindow = null
   dayRouteSummaries.value = []
 }
 
@@ -775,6 +797,98 @@ const routeModeLegend = computed(() => {
 const routeFallbackCount = computed(() =>
   dayRouteSummaries.value.reduce((total, item) => total + item.fallbackSegments, 0)
 )
+
+/*
+ * 附近站点的查看中心：把行程里每个「天 + 景点」都收进来，作为可切换的列表中心。
+ * 有坐标的景点才进列表；标签用"第 N 天 · 景点名"，与概览编号口径一致。
+ */
+const stationCenters = computed(() => {
+  if (!tripPlan.value) return []
+  const centers: {
+    key: string
+    label: string
+    longitude: number
+    latitude: number
+  }[] = []
+  tripPlan.value.days.forEach((day, dayIndex) => {
+    day.attractions.forEach((attraction, attrIndex) => {
+      const loc = attraction.location
+      if (!loc || !Number.isFinite(loc.longitude) || !Number.isFinite(loc.latitude)) return
+      centers.push({
+        key: `${dayIndex}-${attrIndex}`,
+        label: t('result.mapInfo.dayAttraction', { day: dayIndex + 1, index: attrIndex + 1 }),
+        longitude: loc.longitude,
+        latitude: loc.latitude,
+      })
+    })
+  })
+  return centers
+})
+
+/*
+ * 站点 list 上抛的「聚焦」事件：把地图镜头平移/放大到该站点，
+ * 并挂一个临时的站点标记 + 信息窗，方便在地图上看到它的位置。
+ * 临时标记/窗口清理由顶部的 stationOverlays/stationWindow 管理。
+ */
+const handleStationFocus = (station: StationView) => {
+  if (!map) {
+    feedback.info(t('result.station.focus'))
+    return
+  }
+  // 清掉上一次留下的站点标记与信息窗，避免越盯越多
+  stationOverlays.forEach((o) => {
+    try {
+      o.setMap(null)
+    } catch {
+      map.remove(o)
+    }
+  })
+  stationOverlays = []
+  try {
+    stationWindow?.setMap(null)
+  } catch {
+    /* 窗口可能已经随地图销毁，忽略 */
+  }
+  stationWindow = null
+
+  const pos = [station.location.longitude, station.location.latitude]
+  const AMapGlobal = (window as unknown as { AMap?: any }).AMap
+  if (AMapGlobal) {
+    const marker = new AMapGlobal.Marker({
+      position: pos,
+      anchor: 'center',
+      zIndex: 300,
+    })
+    map.add(marker)
+    stationOverlays.push(marker)
+
+    const win = new AMapGlobal.InfoWindow({
+      isCustom: true,
+      offset: new AMapGlobal.Pixel(0, -20),
+      closeWhenClickMap: true,
+    })
+    win.setContent(buildStationBubble(station))
+    win.open(map, pos)
+    stationWindow = win
+  }
+
+  map.setZoomAndCenter(STATION_FOCUS_ZOOM, pos, false, 300)
+  feedback.info(t('result.station.focus'))
+}
+
+const buildStationBubble = (station: StationView): string => {
+  const typeLabel = station.type === 'subway' ? t('result.station.subway') : t('result.station.bus')
+  return `
+    <div class="station-bubble">
+      <span class="station-bubble__tag">${typeLabel}</span>
+      <span class="station-bubble__name">${station.name}</span>
+      <span class="station-bubble__meta">${t('result.station.walkHint', {
+        minutes: station.walkMinutes,
+        km: station.walkKm,
+      })}</span>
+    </div>
+  `
+}
 
 type OverviewAttractionItem = {
   name: string
@@ -4930,6 +5044,14 @@ const drawRoutes = async (
   color: var(--c-warning);
 }
 
+/* 附近站点面板：放在路线概览下方，跟着地图卡片走 */
+.map-stations {
+  margin-top: var(--sp-4);
+  border-radius: var(--r-md);
+  overflow: hidden;
+  box-shadow: 0 1px 0 var(--c-border);
+}
+
 /* ---------------- 知识图谱 ---------------- */
 .kg-card {
   padding: var(--sp-4) var(--sp-5) var(--sp-5);
@@ -5404,6 +5526,40 @@ const drawRoutes = async (
   align-items: center;
   justify-content: center;
   cursor: pointer;
+}
+
+/* 站点聚焦气泡（高德 InfoWindow 内容，非 scoped） */
+.station-bubble {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 10px;
+  background: var(--tripstar-map-surface);
+  border: 1px solid var(--tripstar-map-border);
+  border-radius: var(--r-md);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+  font-size: var(--fs-sm);
+  color: var(--tripstar-map-text-main);
+  white-space: nowrap;
+}
+
+.station-bubble__tag {
+  align-self: flex-start;
+  padding: 0 6px;
+  border-radius: var(--r-full);
+  font-size: 11px;
+  font-weight: var(--fw-medium);
+  background: var(--c-info-soft);
+  color: var(--c-info);
+}
+
+.station-bubble__name {
+  font-weight: var(--fw-semibold);
+}
+
+.station-bubble__meta {
+  font-size: var(--fs-xs);
+  color: var(--tripstar-map-text-sub);
 }
 
 .tripstar-map-marker__core {

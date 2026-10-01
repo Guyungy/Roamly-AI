@@ -185,3 +185,149 @@ export async function getAttractionPhoto(name: string, city?: string): Promise<s
     return null
   }
 }
+
+// ============ 附近站点（统一调用层，带降级兜底） ============
+
+export interface NearbyStation {
+  id: string
+  name: string
+  type: 'subway' | 'bus'
+  address: string
+  location: { longitude: number; latitude: number }
+  distance: number
+}
+
+/** 附步行可达性推导字段 */
+export interface StationView extends NearbyStation {
+  walkMinutes: number
+  walkKm: number
+  walkable: boolean
+}
+
+export type StationSource = 'live' | 'cache' | 'mock'
+
+export interface StationResult {
+  stations: StationView[]
+  source: StationSource
+}
+
+const WALKABLE_THRESHOLD_M = 800
+const WALK_SPEED_MS = 1.2
+const CACHE_KEY_PREFIX = 'chumenla:nearby-station:'
+const STATION_CACHE_TTL_MS = 24 * 60 * 60 * 1000
+
+const toStationView = (raw: NearbyStation): StationView => {
+  const walkMinutes = Math.max(1, Math.round(raw.distance / WALK_SPEED_MS / 60))
+  const walkKm = Math.round((raw.distance / 1000) * 10) / 10
+  return {
+    ...raw,
+    walkMinutes,
+    walkKm,
+    walkable: raw.distance <= WALKABLE_THRESHOLD_M,
+  }
+}
+
+const normalizeType = (raw?: string): 'subway' | 'bus' => {
+  if (!raw) return 'bus'
+  return /(地铁|轨道交通|railway|metro|subway)/i.test(raw) ? 'subway' : 'bus'
+}
+
+const normalizeList = (payload: any): NearbyStation[] => {
+  const list = Array.isArray(payload?.data) ? payload.data : []
+  const out: NearbyStation[] = []
+  list.forEach((s: any, i: number) => {
+    const lng = s?.location?.longitude
+    const lat = s?.location?.latitude
+    if (typeof lng !== 'number' || typeof lat !== 'number') return
+    if (!Number.isFinite(lng) || !Number.isFinite(lat)) return
+    out.push({
+      id: s?.id || `st-${i}`,
+      name: (s?.name || '未知站点').trim(),
+      type: normalizeType(s?.type),
+      address: (s?.address || '').trim(),
+      location: { longitude: lng, latitude: lat },
+      distance: typeof s?.distance === 'number' && Number.isFinite(s.distance) ? Math.round(s.distance) : 0,
+    })
+  })
+  return out.sort((a, b) => a.distance - b.distance)
+}
+
+/** 由中心坐标生成确定性的 mock 站点（演示兜底） */
+const mockStations = (lng: number, lat: number): NearbyStation[] => {
+  const pools = [
+    { type: 'subway' as const, names: ['地铁·市民中心站', '地铁·科技馆站', '地铁·中央公园站', '地铁·人民广场站'] },
+    { type: 'bus' as const, names: ['公交·市民广场站', '公交·文化路站', '公交·和平路口站', '公交·滨河大道站', '公交·中心街区站'] },
+  ]
+  const seed = Math.abs(Math.round((lat * 7919 + lng * 104729) * 1000))
+  const list: NearbyStation[] = []
+  const nextRand = () =>
+    ((seed * 31 + (list.length + 1) * 7 + Math.floor(seed / (list.length + 2))) % 997) / 997
+  pools.forEach((pool, pi) => {
+    pool.names.forEach((name, ni) => {
+      const base = pi * 260 + ni * 220 + Math.floor(nextRand() * 180)
+      const offsetDeg = (base / 111000) * (ni % 2 === 0 ? 1 : -1) * (0.6 + nextRand() * 0.8)
+      list.push({
+        id: `st-${pi}-${ni}`,
+        name,
+        type: pool.type,
+        address: '演示数据 · 附近站点',
+        location: { longitude: lng + offsetDeg, latitude: lat + offsetDeg * 0.7 },
+        distance: Math.max(80, base + Math.floor(nextRand() * 60)),
+      })
+    })
+  })
+  return list.sort((a, b) => a.distance - b.distance)
+}
+
+const stationCacheKey = (lng: number, lat: number) =>
+  `${CACHE_KEY_PREFIX}${lng.toFixed(4)},${lat.toFixed(4)}`
+
+const cacheRead = (lng: number, lat: number): StationView[] | null => {
+  try {
+    const raw = uni.getStorageSync(stationCacheKey(lng, lat))
+    if (!raw) return null
+    const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw
+    if (Date.now() - (parsed?.at || 0) > STATION_CACHE_TTL_MS) return null
+    if (!Array.isArray(parsed?.list)) return null
+    return parsed.list.map(toStationView)
+  } catch {
+    return null
+  }
+}
+
+const cacheWrite = (lng: number, lat: number, list: NearbyStation[]) => {
+  try {
+    uni.setStorageSync(stationCacheKey(lng, lat), JSON.stringify({ at: Date.now(), list }))
+  } catch {
+    /* 存不下就静默放弃 */
+  }
+}
+
+/**
+ * 拉取中心点附近的站点列表。
+ * 优先走真实后端 /api/map/nearby-station；失败/未配置时读本地缓存，再不行回退内置 mock。
+ */
+export async function fetchNearbyStations(
+  longitude: number,
+  latitude: number,
+  options: { radius?: number; keyword?: string } = {}
+): Promise<StationResult> {
+  const radius = options.radius ?? 1500
+  const keyword = options.keyword ?? '地铁,公交'
+  try {
+    const params = `coord=${longitude.toFixed(6)},${latitude.toFixed(6)}&radius=${radius}&keyword=${encodeURIComponent(keyword)}`
+    const res = await request<{ success: boolean; data: NearbyStation[] }>({
+      url: `/api/map/nearby-station?${params}`,
+    })
+    const list = normalizeList(res)
+    if (list.length > 0) {
+      cacheWrite(longitude, latitude, list)
+      return { stations: list.map(toStationView), source: 'live' }
+    }
+    throw new Error('empty')
+  } catch {
+    const cached = cacheRead(longitude, latitude)
+    if (cached && cached.length) return { stations: cached, source: 'cache' }
+    return { stations: mockStations(longitude, latitude).map(toStationView), source: 'mock' }
+  }
+}

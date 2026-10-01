@@ -297,6 +297,20 @@
       "transit": "公交",
       "riding": "骑行",
       "straight": "直线示意"
+    },
+    "station": {
+      "title": "附近站点",
+      "loading": "正在检索附近站点…",
+      "empty": "该位置附近暂无站点",
+      "loadFailed": "站点加载失败，请稍后重试",
+      "subway": "地铁",
+      "bus": "公交",
+      "meters": "{value} 米",
+      "walkHint": "步行约 {minutes} 分钟 · {km} 公里",
+      "walkTitle": "步行可达性（按直线距离估算）",
+      "fromCache": "网络异常，已展示最近一次缓存的站点",
+      "fromMock": "展示内置演示站点（后端尚未接通）",
+      "focus": "已在地图聚焦该站点"
     }
   },
   "auth": {
