@@ -151,8 +151,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { onShow } from '@dcloudio/uni-app'
-import NavBar from '@/components/NavBar.vue'
+import { onShow, onShareAppMessage } from '@dcloudio/uni-app'
 import LoadingOverlay from '@/components/LoadingOverlay.vue'
 import QuotaWall from '@/components/QuotaWall.vue'
 import { useTripStore } from '@/stores/trip'
@@ -176,6 +175,11 @@ const extraText = ref('')
 onShow(() => {
   quotaStore.ensureToday()
 })
+
+onShareAppMessage(() => ({
+  title: '出门啦 · 帮你发现附近的好去处',
+  path: '/pages/nearby/index',
+}))
 
 onMounted(() => {
   if (!currentCity.value) {

@@ -101,6 +101,7 @@ import BudgetPanel from '@/components/BudgetPanel.vue'
 import WeatherCard from '@/components/WeatherCard.vue'
 import { useTripStore } from '@/stores/trip'
 import { getAttractionPhoto } from '@/services/api'
+import { guideShareToFriend } from '@/utils/share'
 
 const tripStore = useTripStore()
 const tripPlan = computed(() => tripStore.tripPlan)
@@ -239,10 +240,8 @@ onMounted(() => {
 })
 
 function shareTrip() {
-  // #ifdef MP-WEIXIN
-  // Trigger native share
-  // #endif
-  uni.showToast({ title: '长按页面可分享给好友', icon: 'none' })
+  // 小程序无法用 JS 主动拉起分享面板，只能引导用户使用右上角菜单
+  guideShareToFriend('点击右上角「···」即可分享这份行程')
 }
 
 onShareAppMessage(() => {

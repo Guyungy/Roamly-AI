@@ -28,7 +28,6 @@
       "path": "pages/history/index",
       "style": {
         "navigationStyle": "custom",
-        "enablePullDownRefresh": true,
         "backgroundColor": "#F5F6FA",
         "backgroundColorTop": "#FFFFFF",
         "backgroundColorBottom": "#F5F6FA"
@@ -42,7 +41,7 @@
         "backgroundColorTop": "#FFFFFF",
         "backgroundColorBottom": "#F5F6FA"
       }
-    },
+    }
   ],
   "subPackages": [
     {

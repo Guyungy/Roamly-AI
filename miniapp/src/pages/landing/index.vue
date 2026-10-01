@@ -169,7 +169,7 @@
         >
           立即生成行程
         </wd-button>
-        <text class="submit-hint">AI 正在为你规划最佳路线...</text>
+        <text class="submit-hint">{{ submitHint }}</text>
       </view>
     </view>
 
@@ -191,7 +191,7 @@
 
 <script setup lang="ts">
 import { reactive, computed, ref } from 'vue'
-import { onShow } from '@dcloudio/uni-app'
+import { onShow, onShareAppMessage } from '@dcloudio/uni-app'
 import LoadingOverlay from '@/components/LoadingOverlay.vue'
 import QuotaWall from '@/components/QuotaWall.vue'
 import { useTripStore } from '@/stores/trip'
@@ -213,6 +213,12 @@ const todayStr = computed(() => {
 onShow(() => {
   quotaStore.ensureToday()
 })
+
+// 邀请好友链路依赖页面声明分享，否则右上角分享菜单拿不到卡片内容
+onShareAppMessage(() => ({
+  title: '出门啦 · AI 帮你把行程排好，说走就走',
+  path: '/pages/landing/index',
+}))
 
 function goToProfile() {
   uni.switchTab({ url: '/pages/profile/index' })
@@ -265,6 +271,15 @@ const canSubmit = computed(() => {
   return formData.city.trim() && formData.start_date && formData.end_date && travelDays.value > 0 && !tripStore.loading
 })
 
+/** 提交按钮下方提示：把「为什么还不能点」直接讲清楚，避免按钮常灰但无解释 */
+const submitHint = computed(() => {
+  if (tripStore.loading) return 'AI 正在为你规划最佳路线...'
+  if (!formData.city.trim()) return '请先填写目的地城市'
+  if (!formData.start_date || !formData.end_date) return '请选择出发和返回日期'
+  if (travelDays.value <= 0) return '返回日期需晚于出发日期'
+  return `已选 ${travelDays.value} 天，点击生成专属行程`
+})
+
 function togglePreference(value: string) {
   const idx = formData.preferences.indexOf(value)
   if (idx >= 0) {
@@ -276,9 +291,10 @@ function togglePreference(value: string) {
 
 function onStartDateChange(e: any) {
   formData.start_date = e.detail.value
-  // 如果 end_date < start_date，自动重置
+  // 如果 end_date < start_date，自动重置并明确告知，避免用户以为日期被吞了
   if (formData.end_date && formData.end_date < formData.start_date) {
     formData.end_date = ''
+    uni.showToast({ title: '返回日期早于出发日期，已清空请重选', icon: 'none' })
   }
 }
 

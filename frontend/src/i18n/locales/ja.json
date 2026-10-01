@@ -24,7 +24,8 @@
     "edit": "編集",
     "save": "保存",
     "cancel": "キャンセル",
-    "delete": "削除"
+    "delete": "削除",
+    "close": "閉じる"
   },
   "api": {
     "submitTripPlanFailed": "旅行プランの送信に失敗しました",
@@ -94,7 +95,27 @@
       "preparing": "少々お待ちください。準備中です...",
       "workingTogether": "AIエージェントが協力して旅程を作成しています...",
       "donePrepare": "完了！出発の準備をしてください...",
-      "done": "完了！"
+      "cloudHint": "クラウドモデルが旅程全体を生成しています。ページを閉じないでください。",
+      "done": "完了！",
+      "elapsed": "経過 {sec} 秒",
+      "honestNote": "一度のモデル呼び出しで作成しています。進捗は受信済みの内容から推定したものです",
+      "daysCount": "{total} 日中 {done} 日目まで作成済み",
+      "stage": {
+        "understand": "ペースと好みを読み取っています",
+        "days": "各日の動線と観光地を組み立てています",
+        "weather": "その時期の天気を確認しています",
+        "budget": "入場料と予算を計算しています",
+        "finalize": "旅のしおりにまとめています"
+      },
+      "whispers": [
+        "混雑する名所を、行列が短い時間帯にずらしています。",
+        "各日を一本の線にまとめて、戻り道を減らしています。",
+        "ご年配の方と一緒なら、坂道と長距離の移動は分けています。",
+        "近い価格の宿を比べて、移動が楽な方を選んでいます。",
+        "良い旅程には少しの待ち時間が必要です。急ぎません。",
+        "好みに合わない店があれば、いつでも入れ替えます。",
+        "必ず行きたい場所を先に確保し、残りは当日の気分に任せます。"
+      ]
     },
     "messages": {
       "travelDaysTooLong": "旅行日数は 30 日以内にしてください",
@@ -122,6 +143,8 @@
       "weather": "天気情報"
     },
     "overviewTitle": "{city} 旅行プラン",
+    "prevAttraction": "前の観光スポット",
+    "nextAttraction": "次の観光スポット",
     "dateLabel": "日付:",
     "suggestionLabel": "提案:",
     "dateRange": "{start} 〜 {end}",
@@ -191,6 +214,7 @@
       "quickMealQuestion": "おすすめレストランの価格帯は？",
       "placeholder": "旅程について質問を入力...",
       "send": "送信",
+      "stop": "停止",
       "replyFallback": "申し訳ありません。返信を取得できませんでした。後でもう一度お試しください",
       "networkError": "ネットワーク接続に問題があります。バックエンドが起動しているか確認してください"
     },
@@ -211,7 +235,9 @@
       "pdfSuccess": "PDF のエクスポートに成功しました!",
       "pdfFailed": "PDF のエクスポートに失敗しました: {error}",
       "mapLoaded": "地図の読み込みに成功しました",
-      "mapLoadFailed": "地図の読み込みに失敗しました"
+      "mapLoadFailed": "地図の読み込みに失敗しました",
+      "mapUnavailable": "高徳地図のKeyが未設定のため、地図は利用できません",
+      "mapRetry": "再読み込み"
     },
     "graph": {
       "type": "種類",
@@ -251,7 +277,95 @@
     },
     "imageLoadFailed": "画像の読み込みに失敗しました",
     "mapInfo": {
-      "dayAttraction": "{day} 日目 スポット {index}"
+      "dayAttraction": "{day}日目 · スポット{index}",
+      "routeTitle": "ルート概要",
+      "routeRow": "{segments}区間 · {distance} · {duration}",
+      "routeFallback": "{count}区間は実際のルートが取得できず、直線で表示しています",
+      "kilometers": "{value} km",
+      "meters": "{value} m",
+      "minutes": "{minutes} 分",
+      "hoursMinutes": "{hours} 時間 {minutes} 分",
+      "tel": "電話",
+      "openInAmap": "Amapで開く",
+      "ratingLabel": "評価",
+      "costLabel": "1人あたり",
+      "openHours": "営業時間"
+    },
+    "routeMode": {
+      "driving": "車",
+      "walking": "徒歩",
+      "transit": "公共交通",
+      "riding": "自転車",
+      "straight": "直線"
     }
+  },
+  "auth": {
+    "subtitle": "ログインすると旅程がクラウドに保存され、別の端末でも見られます。",
+    "title": "Chumenla にログイン",
+    "signupTitle": "アカウント登録",
+    "resetTitle": "パスワード再設定",
+    "tabPassword": "パスワード",
+    "tabOtp": "メール認証コード",
+    "tabSignup": "新規登録",
+    "email": "メールアドレス",
+    "emailPlaceholder": "メールアドレスを入力",
+    "password": "パスワード",
+    "passwordPlaceholder": "パスワードを入力",
+    "passwordForSignup": "8 文字以上（後のパスワードログインに使用）",
+    "code": "認証コード",
+    "codePlaceholder": "メールに届いた認証コードを入力",
+    "sendCode": "コードを送信",
+    "resendIn": "{seconds} 秒後に再送",
+    "login": "ログイン",
+    "signup": "登録してログイン",
+    "forgot": "パスワードをお忘れですか？",
+    "useOtp": "認証コードでログイン",
+    "usePassword": "パスワードでログイン",
+    "backToLogin": "ログインに戻る",
+    "resetCode": "再設定コード",
+    "newPassword": "新しいパスワード",
+    "resetHint": "このメールアドレスに再設定コードを送ります。認証後に新しいパスワードを設定できます。",
+    "sendResetCode": "再設定コードを送信",
+    "resetSubmit": "新しいパスワードを設定",
+    "otpHint": "未登録のメールならアカウントを作成、登録済みならそのままログインします。",
+    "signupHint": "新規アカウントではパスワードも設定が必要です（後でログインに使えます）。",
+    "signedIn": "ログイン中",
+    "signOut": "ログアウト",
+    "signOutTitle": "ログアウトしますか？",
+    "notice": {
+      "signedIn": "ログインしました",
+      "signedOut": "ログアウトしました",
+      "codeSent": "認証コードを送信しました。メールをご確認ください",
+      "existingUser": "このメールアドレスは認証コードでログインできます",
+      "resetCodeSent": "再設定コードを送信しました。メールをご確認ください"
+    },
+    "errors": {
+      "emailRequired": "メールアドレスを入力してください",
+      "emailInvalid": "メールアドレスの形式が正しくありません",
+      "passwordRequired": "パスワードを入力してください",
+      "passwordTooShort": "パスワードは 8 文字以上にしてください",
+      "codeRequired": "認証コードを入力してください",
+      "otpNotSent": "先にこのメールアドレスの認証コードを取得してください",
+      "resetNotStarted": "先に再設定コードを送信してください",
+      "sendCodeFailed": "コードの送信に失敗しました。しばらくしてからお試しください",
+      "codeFailed": "認証コードが正しくありません。もう一度入力してください",
+      "resetFailed": "パスワードの再設定に失敗しました",
+      "loginFailed": "メールアドレスまたはパスワードが正しくありません"
+    }
+  },
+  "trips": {
+    "title": "マイ旅程",
+    "count": "{count} 件",
+    "refresh": "更新",
+    "needLogin": "旅程はクラウドに保存されます。ログインすると閲覧・同期できます。",
+    "empty": "保存された旅程はまだありません。まずは作成してみましょう。",
+    "open": "表示",
+    "loadFailed": "旅程の読み込みに失敗しました",
+    "saved": "マイ旅程に保存しました",
+    "saveFailed": "旅程は生成されましたが、クラウドへの保存に失敗しました",
+    "deleteTitle": "旅程を削除",
+    "deleteConfirm": "「{name}」を削除しますか？元に戻せません。",
+    "deleteNotAllowed": "削除できませんでした。存在しないか、別アカウントの旅程です",
+    "deleteFailed": "削除に失敗しました"
   }
 }
