@@ -369,6 +369,9 @@
                       </div>
                       <p class="attraction-desc">{{ item.description }}</p>
                     </dl>
+                    <div v-if="!editMode && getNavUrl(item.name, item.location)" class="nav-actions">
+                      <NavButton :url="getNavUrl(item.name, item.location)!" />
+                    </div>
                   </div>
                 </article>
               </div>
@@ -402,6 +405,9 @@
                       <dd>{{ day.hotel.distance }}</dd>
                     </div>
                   </dl>
+                  <div v-if="getNavUrl(day.hotel.name, day.hotel.location)" class="nav-actions">
+                    <NavButton :url="getNavUrl(day.hotel.name, day.hotel.location)!" />
+                  </div>
                 </div>
               </template>
 
@@ -664,6 +670,8 @@ import { Keyboard, Mousewheel } from 'swiper/modules'
 import NavBar from '@/components/NavBar.vue'
 import OverviewAttractionCard from '@/components/OverviewAttractionCard.vue'
 import AIChat from '@/components/AIChat.vue'
+import NavButton from '@/components/NavButton.vue'
+import { buildNavLink } from '@/services/navLink'
 import {
   AMAP_MAP_FEATURES,
   AMAP_MAP_STYLE,
@@ -687,7 +695,7 @@ import { hasOwnBackend } from '@/config/cloud'
 import { confirmDialog, feedback } from '@/utils/feedback'
 import { buildKnowledgeGraphFromPlan } from '@/utils/knowledgeGraph'
 import { buildAttractionArtwork, type ArtworkVariant } from '@/utils/attractionArtwork'
-import type { TripPlan, KnowledgeGraphData, GraphCategory, Attraction, Meal, Hotel, WeatherInfo } from '@/types'
+import type { TripPlan, KnowledgeGraphData, GraphCategory, Attraction, Meal, Hotel, WeatherInfo, Location as AppLocation } from '@/types'
 
 const router = useRouter()
 const { t, locale } = useI18n()
@@ -2369,6 +2377,18 @@ const handleImageLoad = (event: Event) => {
   img.classList.remove('is-loaded')
   void img.offsetWidth // 强制重排：同名 class 不加这一次重排是不会重放动画的
   img.classList.add('is-loaded')
+}
+
+/*
+ * 给地点卡片生成「一键导航」链接。
+ * 数据里带坐标才给链接（没有坐标返回 null，组件据此不渲染按钮）；
+ * 链接是纯前端拼接的腾讯地图网页 URI，弱网时照样能立刻给到用户。
+ */
+const getNavUrl = (name: string, location: AppLocation | undefined): string | null => {
+  if (!location || !Number.isFinite(location.latitude) || !Number.isFinite(location.longitude)) {
+    return null
+  }
+  return buildNavLink(name, location.latitude, location.longitude).url
 }
 
 // 图片加载失败时的处理：退回本地插画（比一块灰底 + 一行"加载失败"体面得多）
@@ -4434,6 +4454,13 @@ const drawRoutes = async (
   min-width: 0;
   font-size: var(--fs-sm);
   color: var(--c-ink-700);
+}
+
+/* 一键导航按钮的承载行：右对齐，与卡片内容留出呼吸 */
+.nav-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: var(--sp-3);
 }
 
 .overview-head {

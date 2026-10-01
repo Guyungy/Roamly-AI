@@ -297,6 +297,10 @@
       "transit": "Transit",
       "riding": "Cycle",
       "straight": "Straight line"
+    },
+    "nav": {
+      "label": "Navigate",
+      "buttonTitle": "Open navigation in a new tab"
     }
   },
   "auth": {

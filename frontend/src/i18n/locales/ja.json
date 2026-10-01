@@ -297,6 +297,10 @@
       "transit": "公共交通",
       "riding": "自転車",
       "straight": "直線"
+    },
+    "nav": {
+      "label": "ナビ開始",
+      "buttonTitle": "新しいタブでナビを開く"
     }
   },
   "auth": {

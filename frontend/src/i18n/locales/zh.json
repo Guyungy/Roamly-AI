@@ -297,6 +297,10 @@
       "transit": "公交",
       "riding": "骑行",
       "straight": "直线示意"
+    },
+    "nav": {
+      "label": "一键导航",
+      "buttonTitle": "在新窗口打开导航"
     }
   },
   "auth": {
