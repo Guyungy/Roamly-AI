@@ -4,6 +4,7 @@
  */
 import { ref } from 'vue'
 import { useQuotaStore } from '@/stores/quota'
+import { guideShareToFriend } from '@/utils/share'
 
 export function useQuotaAction() {
   const quotaStore = useQuotaStore()
@@ -31,9 +32,12 @@ export function useQuotaAction() {
       const ad = (wx as any).createRewardedVideoAd({ adUnitId: 'adunit-placeholder' })
       ad.onClose((res: { isEnded: boolean }) => {
         if (res && res.isEnded) {
-          quotaStore.rewardByAd()
-          showQuotaWall.value = false
-          uni.showToast({ title: '+1次规划机会', icon: 'success' })
+          if (quotaStore.rewardByAd()) {
+            showQuotaWall.value = false
+            uni.showToast({ title: '+1次规划机会', icon: 'success' })
+          } else {
+            uni.showToast({ title: '今日广告次数已达上限', icon: 'none' })
+          }
         } else {
           uni.showToast({ title: '需完整观看才能获得奖励', icon: 'none' })
         }
@@ -45,7 +49,10 @@ export function useQuotaAction() {
     // #endif
 
     // 非微信环境 / 开发测试
-    quotaStore.rewardByAd()
+    if (!quotaStore.rewardByAd()) {
+      uni.showToast({ title: '今日广告次数已达上限', icon: 'none' })
+      return
+    }
     showQuotaWall.value = false
     uni.showToast({ title: '[测试] +1次', icon: 'success' })
   }
@@ -59,13 +66,20 @@ export function useQuotaAction() {
       confirmText: '去分享',
       confirmColor: '#FF6B35',
       success: (res) => {
-        if (res.confirm) {
-          // #ifndef MP-WEIXIN
-          quotaStore.rewardByInvite()
-          uni.showToast({ title: '[测试] +3次', icon: 'success' })
-          // #endif
-        }
-      }
+        if (!res.confirm) return
+
+        // #ifdef MP-WEIXIN
+        // 小程序无法主动发起分享：引导用户走右上角分享菜单。
+        // 真正的邀请归因必须由服务端在好友首次启动时回传，前端不直接发奖，
+        // 否则等于开放无限次数的刷取口子。
+        guideShareToFriend('点击右上角「···」分享，好友首次使用后你将获得 3 次')
+        // #endif
+
+        // #ifndef MP-WEIXIN
+        quotaStore.rewardByInvite()
+        uni.showToast({ title: '[测试] +3次', icon: 'success' })
+        // #endif
+      },
     })
   }
 

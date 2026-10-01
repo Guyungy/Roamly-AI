@@ -21,7 +21,7 @@
           <view class="section-label">
             <view class="label-line" /><text class="label-text">景点安排</text><view class="label-line" />
           </view>
-          <AttractionCard v-for="(attr, index) in day.attractions" :key="attr.name" :attraction="attr" :order="index + 1" :image-url="getImage(attr.name)" />
+          <AttractionCard v-for="(attr, index) in day.attractions" :key="`${attr.name}-${index}`" :attraction="attr" :order="index + 1" :image-url="getImage(attr.name)" />
 
           <view v-if="day.hotel" class="hotel-section">
             <view class="section-label">
@@ -74,7 +74,6 @@ const collapseValue = ref(props.defaultExpanded ? ['main'] : [])
 
 function getImage(name: string) { return props.images[name] }
 function getMealEmoji(type: string) { return ({ breakfast:'🌅', lunch:'☀️', dinner:'🌙', snack:'🍡' } as Record<string,string>)[type] || '🍽️' }
-function getMealLabelLocal(type: string) { return ({ breakfast:'早餐', lunch:'午餐', dinner:'晚餐', snack:'小食' } as Record<string,string>)[type] || type }
 </script>
 
 <style scoped>

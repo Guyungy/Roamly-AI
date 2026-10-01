@@ -37,18 +37,6 @@ export const useTripStore = defineStore('trip', () => {
     error.value = msg
   }
 
-  /**
-   * 更新预算项（用户在结果页编辑预算时调用）
-   */
-  function updateBudgetItem(field: keyof NonNullable<TripPlan['budget']>, value: number) {
-    if (tripPlan.value?.budget) {
-      (tripPlan.value.budget as any)[field] = value
-      // 重新计算总预算
-      const b = tripPlan.value.budget
-      b.total = b.total_attractions + b.total_hotels + b.total_meals + b.total_transportation
-    }
-  }
-
   return {
     // State
     tripPlan,
@@ -64,6 +52,5 @@ export const useTripStore = defineStore('trip', () => {
     clearTripPlan,
     setLoading,
     setError,
-    updateBudgetItem,
   }
 })

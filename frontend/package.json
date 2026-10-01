@@ -5,18 +5,20 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vue-tsc && vite build",
-    "preview": "vite preview"
+    "build": "vite build",
+    "type-check": "vue-tsc --noEmit",
+    "preview": "vite preview --host 0.0.0.0"
   },
   "dependencies": {
     "@amap/amap-jsapi-loader": "^1.0.1",
-    "@ant-design/icons-vue": "^7.0.1",
-    "ant-design-vue": "^4.2.6",
+    "@tencent-ai/workbuddy-cloud-sdk": "dev",
     "axios": "^1.7.9",
     "dayjs": "^1.11.10",
     "echarts": "^5.5.1",
     "html2canvas": "^1.4.1",
     "jspdf": "^3.0.3",
+    "naive-ui": "^2.45.3",
+    "pinia": "^2.1.7",
     "swiper": "^11.2.10",
     "vue": "^3.5.13",
     "vue-i18n": "^9.14.4",
