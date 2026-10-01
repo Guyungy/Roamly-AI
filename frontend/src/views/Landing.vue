@@ -1,265 +1,401 @@
 <template>
   <div class="landing-page">
-    <div class="lower-shade" :style="lowerShadeStyle"></div>
-    <NavBar @brand-click="scrollToTop" @cta-click="scrollToForm" />
+    <NavBar
+      @brand-click="scrollToTop"
+      @cta-click="scrollToForm"
+      @auth-click="openAuth"
+      @sign-out="handleSignOut"
+    />
 
-    <div class="wrapper">
-      <div class="page-header section-dark landing-header" :style="pageHeaderStyle">
-        <div class="filter"></div>
-        <div class="content-center" :style="heroContentStyle">
-          <div class="container">
-            <!-- <p class="landing-hero-badge text-center">{{ t('home.heroBadge') }}</p> -->
-            <div class="title-brand">
-              <h1 class="presentation-title">
-                TRIPSTAR
-              </h1>
-            </div>
-            <h2 class="presentation-subtitle text-center">{{ t('home.titleLine') }}</h2>
-          </div>
-        </div>
-        <div class="moving-clouds" :style="movingCloudsStyle"></div>
-        <div class="fog-low" :style="fogLowStyle">
-          <img src="https://demos.creative-tim.com/paper-kit-2/assets/img/clouds.png" alt="fog" />
-        </div>
-        <div class="fog-low right" :style="fogLowRightStyle">
-          <img src="https://demos.creative-tim.com/paper-kit-2/assets/img/clouds.png" alt="fog" />
-        </div>
-        <div class="hero-bottom-shade" :style="heroBottomShadeStyle"></div>
+    <!-- 主视觉：三层信息（标签 / 主张 / 说明），不再有一个占满整屏的英文大标题 -->
+    <section class="hero">
+      <div class="hero__glow hero__glow--a" aria-hidden="true"></div>
+      <div class="hero__glow hero__glow--b" aria-hidden="true"></div>
+
+      <div class="hero__inner">
+        <span class="hero__eyebrow">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M18.4 5.6 17 7M7 17l-1.4 1.4" />
+            <circle cx="12" cy="12" r="3.4" />
+          </svg>
+          {{ t('home.heroBadge') }}
+        </span>
+
+        <h1 class="hero__title">{{ t('home.titleLine') }}</h1>
+        <p class="hero__sub">{{ t('home.heroDesc') }}</p>
       </div>
-    </div>
+    </section>
 
+    <!-- 表单 -->
     <section ref="formRef" class="form-section">
-      <div class="form-panel" :style="[formRevealStyle, { minHeight: panelHeight === 'auto' ? 'auto' : panelHeight + 'px' }]" ref="panelRef">
-        <a-form v-show="!loading" :model="formData" layout="vertical" @finish="handleSubmit">
+      <div
+        class="form-panel"
+        :style="{ minHeight: panelHeight === 'auto' ? 'auto' : panelHeight + 'px' }"
+        ref="panelRef"
+      >
+        <form v-show="!loading" class="steps" @submit.prevent="handleSubmit">
+          <!-- 01 目的地与日期 -->
           <div class="step">
-            <div class="step-head">
-              <span>01</span>
-              <h3>{{ t('home.step1') }}</h3>
+            <div class="step__head">
+              <span class="step__num">01</span>
+              <h2 class="step__title">{{ t('home.step1') }}</h2>
             </div>
-            <div class="grid grid4">
-              <a-form-item name="city" :rules="formRules.city">
-                <template #label>
-                  <span class="field-label">{{ t('home.cityLabel') }}</span>
-                </template>
-                <a-input
-                  v-model:value="formData.city"
-                  :placeholder="t('home.cityPlaceholder')"
-                  size="large"
-                  class="field-input"
-                />
-              </a-form-item>
 
-              <a-form-item name="start_date" :rules="formRules.startDate">
-                <template #label>
-                  <span class="field-label">{{ t('home.startDateLabel') }}</span>
-                </template>
-                <a-date-picker
-                  v-model:value="formData.start_date"
-                  style="width: 100%"
+            <div class="step__grid step__grid--4">
+              <div class="field">
+                <label class="field__label">{{ t('home.cityLabel') }}</label>
+                <!--
+                  城市输入接高德 AutoComplete：直接输入「杭」就能列出杭州市等选项，
+                  省得用户手打全称（城市规划服务对「杭州」和「杭州市」的命中率不一样）。
+                  menu-props 放开菜单最小宽度：候选是「名称 · 省市区」，跟输入框等宽会被截在
+                  省市区前，几条候选看起来几乎一样。菜单是 teleport 到 body 的，
+                  组件里的 scoped 样式（含 :deep）够不到它，只能用这个属性下发。
+                -->
+                <n-auto-complete
+                  v-model:value="formData.city"
                   size="large"
-                  class="field-input"
+                  clearable
+                  :options="citySuggestOptions"
+                  :loading="citySuggestLoading"
+                  :placeholder="t('home.cityPlaceholder')"
+                  :menu-props="{ style: 'min-width: 320px' }"
+                  @select="handleCitySelect"
+                  @update:value="handleCityInput"
+                />
+              </div>
+
+              <div class="field">
+                <label class="field__label">{{ t('home.startDateLabel') }}</label>
+                <n-date-picker
+                  v-model:value="formData.start_date"
+                  type="date"
+                  size="large"
+                  clearable
                   :placeholder="t('home.startDatePlaceholder')"
                 />
-              </a-form-item>
+              </div>
 
-              <a-form-item name="end_date" :rules="formRules.endDate">
-                <template #label>
-                  <span class="field-label">{{ t('home.endDateLabel') }}</span>
-                </template>
-                <a-date-picker
+              <div class="field">
+                <label class="field__label">{{ t('home.endDateLabel') }}</label>
+                <n-date-picker
                   v-model:value="formData.end_date"
-                  style="width: 100%"
+                  type="date"
                   size="large"
-                  class="field-input"
+                  clearable
                   :placeholder="t('home.endDatePlaceholder')"
                 />
-              </a-form-item>
-
-              <a-form-item>
-                <template #label>
-                  <span class="field-label">{{ t('home.travelDaysLabel') }}</span>
-                </template>
-                <div class="days-chip">
-                  <span class="days-number">{{ formData.travel_days }}</span>
-                  <span class="days-unit">{{ t('home.travelDaysUnit') }}</span>
-                </div>
-              </a-form-item>
-            </div>
-          </div>
-
-          <div class="step">
-            <div class="step-head">
-              <span>02</span>
-              <h3>{{ t('home.step2') }}</h3>
-            </div>
-            <div class="grid grid2">
-              <a-form-item name="transportation">
-                <template #label>
-                  <span class="field-label">{{ t('home.transportationLabel') }}</span>
-                </template>
-                <a-select v-model:value="formData.transportation" size="large" class="field-select">
-                  <a-select-option value="公共交通">{{ t('home.transportation.public') }}</a-select-option>
-                  <a-select-option value="自驾">{{ t('home.transportation.drive') }}</a-select-option>
-                  <a-select-option value="步行">{{ t('home.transportation.walk') }}</a-select-option>
-                  <a-select-option value="混合">{{ t('home.transportation.mixed') }}</a-select-option>
-                </a-select>
-              </a-form-item>
-
-              <a-form-item name="accommodation">
-                <template #label>
-                  <span class="field-label">{{ t('home.accommodationLabel') }}</span>
-                </template>
-                <a-select v-model:value="formData.accommodation" size="large" class="field-select">
-                  <a-select-option value="经济型酒店">{{ t('home.accommodation.budget') }}</a-select-option>
-                  <a-select-option value="舒适型酒店">{{ t('home.accommodation.comfort') }}</a-select-option>
-                  <a-select-option value="豪华酒店">{{ t('home.accommodation.luxury') }}</a-select-option>
-                  <a-select-option value="民宿">{{ t('home.accommodation.homestay') }}</a-select-option>
-                </a-select>
-              </a-form-item>
-            </div>
-
-            <a-form-item name="preferences">
-              <template #label>
-                <span class="field-label">{{ t('home.interestsLabel') }}</span>
-              </template>
-              <div class="interest-grid">
-                <a-checkbox-group v-model:value="formData.preferences" class="interest-group">
-                  <label
-                    v-for="item in interestOptions"
-                    :key="item.value"
-                    class="interest-pill"
-                    :class="{ active: formData.preferences.includes(item.value) }"
-                    @click.prevent="togglePreference(item.value)"
-                  >
-                    {{ t(item.labelKey) }}
-                  </label>
-                </a-checkbox-group>
               </div>
-            </a-form-item>
+
+              <div class="field">
+                <label class="field__label">{{ t('home.travelDaysLabel') }}</label>
+                <div class="days-chip">
+                  <span class="days-chip__num">{{ formData.travel_days }}</span>
+                  <span class="days-chip__unit">{{ t('home.travelDaysUnit', {}, formData.travel_days) }}</span>
+                </div>
+              </div>
+            </div>
           </div>
 
+          <!-- 02 偏好设置 -->
           <div class="step">
-            <div class="step-head">
-              <span>03</span>
-              <h3>{{ t('home.step3') }}</h3>
+            <div class="step__head">
+              <span class="step__num">02</span>
+              <h2 class="step__title">{{ t('home.step2') }}</h2>
             </div>
-            <a-form-item name="free_text_input">
-              <div class="field-textarea">
-                <a-textarea
-                  v-model:value="formData.free_text_input"
-                  :placeholder="t('home.specialNeedsPlaceholder')"
-                  :rows="4"
+
+            <div class="step__grid step__grid--2">
+              <div class="field">
+                <label class="field__label">{{ t('home.transportationLabel') }}</label>
+                <n-select
+                  v-model:value="formData.transportation"
                   size="large"
-                  class="special-textarea"
+                  :options="transportationOptions"
                 />
               </div>
-            </a-form-item>
+
+              <div class="field">
+                <label class="field__label">{{ t('home.accommodationLabel') }}</label>
+                <n-select
+                  v-model:value="formData.accommodation"
+                  size="large"
+                  :options="accommodationOptions"
+                />
+              </div>
+            </div>
+
+            <div class="field field--block">
+              <label class="field__label">{{ t('home.interestsLabel') }}</label>
+              <div class="interest-grid">
+                <button
+                  v-for="item in interestOptions"
+                  :key="item.value"
+                  type="button"
+                  class="interest-pill"
+                  :class="{ 'is-active': formData.preferences.includes(item.value) }"
+                  :aria-pressed="formData.preferences.includes(item.value)"
+                  @click="togglePreference(item.value)"
+                >
+                  {{ t(item.labelKey) }}
+                </button>
+              </div>
+            </div>
           </div>
 
-          <a-form-item>
-            <button type="submit" class="btn btn-danger btn-round submit-btn" :class="{ loading }" :disabled="loading">
-              <span v-if="!loading">{{ t('home.submit') }}</span>
-              <span v-else class="loading-row">
-                <i class="spinner"></i>
-                {{ t('home.submitting') }}
+          <!-- 03 特殊需求 -->
+          <div class="step">
+            <div class="step__head">
+              <span class="step__num">03</span>
+              <h2 class="step__title">{{ t('home.step3') }}</h2>
+            </div>
+            <div class="field field--block">
+              <n-input
+                v-model:value="formData.free_text_input"
+                type="textarea"
+                :rows="4"
+                :placeholder="t('home.specialNeedsPlaceholder')"
+                :resizable="false"
+              />
+            </div>
+          </div>
+
+          <div class="submit-row">
+            <n-button
+              attr-type="submit"
+              type="primary"
+              size="large"
+              block
+              :loading="loading"
+              class="submit-btn"
+            >
+              {{ loading ? t('home.submitting') : t('home.submit') }}
+            </n-button>
+          </div>
+        </form>
+
+        <!-- 生成过程面板 -->
+        <div v-show="loading" class="loading">
+          <header class="loading__head">
+            <h2 class="loading__title">{{ t('home.loading.planCode', { code: planCode }) }}</h2>
+            <p class="loading__sub">{{ t('home.loading.preparing') }}</p>
+          </header>
+
+          <!--
+            云服务模式：整份行程由单次模型调用产出。
+            阶段不是编的 —— days / weather_info / budget 是模型按顺序输出的 JSON 字段，
+            扫一遍已到达的文本就知道它此刻在写哪一段、已经排到第几天（cloudLLM.analyzeStream）。
+          -->
+          <div v-if="!hasOwnBackend" class="progress">
+            <div class="progress__bar">
+              <div class="progress__fill" :style="{ width: `${loadingProgress}%` }"></div>
+            </div>
+            <div class="progress__meta">
+              <span class="progress__percent tabular-nums">{{ loadingProgress }}%</span>
+              <span class="progress__elapsed tabular-nums">{{ t('home.loading.elapsed', { sec: elapsedSec }) }}</span>
+            </div>
+
+            <ul class="stage-list">
+              <li
+                v-for="stage in cloudStages"
+                :key="stage.key"
+                class="stage"
+                :class="`stage--${stage.state}`"
+              >
+                <span class="stage__mark">
+                  <svg
+                    v-if="stage.state === 'done'"
+                    viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                    stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"
+                  >
+                    <polyline points="20 6 9 17 4 12" />
+                  </svg>
+                  <span v-else-if="stage.state === 'active'" class="spinner spinner--sm"></span>
+                  <span v-else class="stage__dot"></span>
+                </span>
+                <span class="stage__body">
+                  <span class="stage__label">{{ stage.label }}</span>
+                  <span v-if="stage.detail" class="stage__detail">{{ stage.detail }}</span>
+                </span>
+              </li>
+            </ul>
+
+            <p v-if="whisper" class="whisper">{{ whisper }}</p>
+            <p class="loading__note">{{ t('home.loading.honestNote') }}</p>
+          </div>
+
+          <!-- 自建后端模式：多智能体分步执行，四个节点对应四个真实步骤 -->
+          <div v-else class="node-track">
+            <div
+              v-for="(node, index) in backendNodes"
+              :key="node.key"
+              class="node"
+              :class="{ 'node--active': node.state === 'active', 'node--done': node.state === 'done' }"
+            >
+              <span class="node__icon">
+                <span v-if="node.state === 'active'" class="spinner spinner--sm"></span>
+                <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <polyline points="20 6 9 17 4 12" />
+                </svg>
               </span>
-            </button>
-          </a-form-item>
-        </a-form>
-
-        <!-- Node Loading Stepper -->
-        <div v-show="loading" class="stepper-wrapper">
-          <div class="stepper-header">
-            <h2 class="stepper-title">{{ t('home.loading.planCode', { code: planCode }) }}</h2>
-            <p class="stepper-subtitle">{{ t('home.loading.preparing') }}</p>
-          </div>
-          
-          <div class="stepper-container">
-            <!-- Step 1: Searching Attractions -->
-            <div class="step-node" :class="{ active: loadingProgress >= 0 && loadingProgress <= 30, completed: loadingProgress > 30 }">
-              <div class="node-icon">
-                <i v-if="loadingProgress >= 0 && loadingProgress <= 30" class="spinner-small"></i>
-                <svg v-else width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
-              </div>
-              <p class="node-text">{{ loadingProgress > 30 ? t('home.loading.searchedAttractions') : t('home.loading.searchingAttractions') }}</p>
-            </div>
-            <div class="step-divider" :class="{ completed: loadingProgress > 30 }"></div>
-
-            <!-- Step 2: Weather -->
-            <div class="step-node" :class="{ active: loadingProgress > 30 && loadingProgress <= 50, completed: loadingProgress > 50 }">
-              <div class="node-icon">
-                <i v-if="loadingProgress > 30 && loadingProgress <= 50" class="spinner-small"></i>
-                <svg v-else width="20px" height="20px" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M10.5 1.5V3.1M3.6 10H2M5.4512 4.95137L4.31982 3.82M15.5498 4.95137L16.6812 3.82M19 10H17.4M6.50007 10.0001C6.50007 7.79093 8.29093 6.00007 10.5001 6.00007C12.0061 6.00007 13.3177 6.83235 14.0001 8.06206M6 22C3.79086 22 2 20.2091 2 18C2 15.7909 3.79086 14 6 14C6.46419 14 6.90991 14.0791 7.32442 14.2245C8.04061 12.3396 9.86387 11 12 11C14.1361 11 15.9594 12.3396 16.6756 14.2245C17.0901 14.0791 17.5358 14 18 14C20.2091 14 22 15.7909 22 18C22 20.2091 20.2091 22 18 22C13.3597 22 9.87921 22 6 22Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                </svg>
-              </div>
-              <p class="node-text">{{ loadingProgress > 50 ? t('home.loading.queriedWeather') : t('home.loading.queryingWeather') }}</p>
-            </div>
-            <div class="step-divider" :class="{ completed: loadingProgress > 50 }"></div>
-
-            <!-- Step 3: Hotels -->
-            <div class="step-node" :class="{ active: loadingProgress > 50 && loadingProgress <= 70, completed: loadingProgress > 70 }">
-              <div class="node-icon">
-                <i v-if="loadingProgress > 50 && loadingProgress <= 70" class="spinner-small"></i>
-                <svg v-else fill="currentColor" width="25px" height="25px" viewBox="0 0 24 24" version="1.1" xml:space="preserve" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
-                    <g id="Layer_Grid"/><g id="Layer_2">
-                    <path d="M21,8c0-2.2-1.8-4-4-4H7C4.8,4,3,5.8,3,8v3.8c-0.6,0.5-1,1.3-1,2.2v2.7V17v2c0,0.6,0.4,1,1,1s1-0.4,1-1v-1h16v1   c0,0.6,0.4,1,1,1s1-0.4,1-1v-2v-0.3V14c0-0.9-0.4-1.7-1-2.2V8z M5,8c0-1.1,0.9-2,2-2h10c1.1,0,2,0.9,2,2v3h-1v-1c0-1.7-1.3-3-3-3   h-1c-0.8,0-1.5,0.3-2,0.8C11.5,7.3,10.8,7,10,7H9c-1.7,0-3,1.3-3,3v1H5V8z M16,10v1h-3v-1c0-0.6,0.4-1,1-1h1C15.6,9,16,9.4,16,10z    M11,10v1H8v-1c0-0.6,0.4-1,1-1h1C10.6,9,11,9.4,11,10z M20,16H4v-2c0-0.6,0.4-1,1-1h3h3h2h3h3c0.6,0,1,0.4,1,1V16z"/></g>
-                </svg>
-              </div>
-              <p class="node-text">{{ loadingProgress > 70 ? t('home.loading.recommendedHotels') : t('home.loading.recommendingHotels') }}</p>
-            </div>
-            <div class="step-divider" :class="{ completed: loadingProgress > 70 }"></div>
-
-            <!-- Step 4: Planning -->
-            <div class="step-node" :class="{ active: loadingProgress > 70 && loadingProgress < 100, completed: loadingProgress >= 100 }">
-              <div class="node-icon">
-                <i v-if="loadingProgress > 70 && loadingProgress < 100" class="spinner-small"></i>
-                <svg v-else width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 11 12 14 22 4"></polyline><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg>
-              </div>
-              <p class="node-text">{{ loadingProgress >= 100 ? t('home.loading.done') : t('home.loading.generatingPlan') }}</p>
+              <span class="node__text">{{ node.label }}</span>
+              <span v-if="index < backendNodes.length - 1" class="node__line" :class="{ 'node__line--done': node.state === 'done' }"></span>
             </div>
           </div>
-          
-          <div class="stepper-footer">
-            <h3>{{ loadingStatus }}</h3>
-            <p v-if="loadingProgress < 100">{{ t('home.loading.workingTogether') }}</p>
-            <p v-else>{{ t('home.loading.donePrepare') }}</p>
-          </div>
+
+          <footer class="loading__foot">
+            <h3 v-if="hasOwnBackend || loadingProgress >= 100">{{ loadingStatus }}</h3>
+            <p v-if="loadingProgress >= 100">{{ t('home.loading.donePrepare') }}</p>
+            <p v-else-if="hasOwnBackend">{{ t('home.loading.workingTogether') }}</p>
+          </footer>
         </div>
       </div>
     </section>
+
+    <MyTrips ref="myTripsRef" @open-trip="handleOpenTrip" @auth-required="openAuth" />
+
+    <CloudAuthModal v-model:open="authOpen" @success="handleAuthSuccess" />
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { message } from 'ant-design-vue'
+import dayjs from 'dayjs'
+import { NAutoComplete, NButton, NDatePicker, NInput, NSelect } from 'naive-ui'
 import { generateTripPlan } from '@/services/api'
+import { saveTrip } from '@/services/cloudTrips'
+import { hasOwnBackend } from '@/config/cloud'
+import { loadAMap } from '@/services/amap'
 import { useTripStore } from '@/stores/trip'
+import { useAuthStore } from '@/stores/auth'
+import { confirmDialog, feedback } from '@/utils/feedback'
 import NavBar from '@/components/NavBar.vue'
-import type { TripFormData } from '@/types'
-import type { Dayjs } from 'dayjs'
+import MyTrips from '@/components/MyTrips.vue'
+import CloudAuthModal from '@/components/CloudAuthModal.vue'
+import type { TripFormData, TripPlan } from '@/types'
+import type { PlanProgressMeta } from '@/services/cloudLLM'
 
+/**
+ * 日期改用时间戳（Naive 的 NDatePicker 原生类型）。
+ * 好处：拿到的是「当天 00:00 的本地时间」，不会像 toISOString 那样被时区推前一天。
+ */
 type LandingFormData = Omit<TripFormData, 'start_date' | 'end_date'> & {
-  start_date: Dayjs | null
-  end_date: Dayjs | null
+  start_date: number | null
+  end_date: number | null
 }
 
 const router = useRouter()
-const { t } = useI18n()
+const { t, tm, locale } = useI18n()
 const tripStore = useTripStore()
+const authStore = useAuthStore()
+
+const authOpen = ref(false)
+const myTripsRef = ref<InstanceType<typeof MyTrips> | null>(null)
+
+const openAuth = () => {
+  authOpen.value = true
+}
+
+const handleAuthSuccess = () => {
+  feedback.success(t('auth.notice.signedIn'))
+  void authStore.init().then(() => myTripsRef.value?.load())
+}
+
+const handleSignOut = () => {
+  confirmDialog({
+    title: t('auth.signOutTitle'),
+    okText: t('auth.signOut'),
+    cancelText: t('common.cancel'),
+    onOk: async () => {
+      await authStore.signOut()
+      feedback.success(t('auth.notice.signedOut'))
+    },
+  })
+}
+
+/** 打开一份云端保存的行程：直接塞进 store 再跳结果页 */
+const handleOpenTrip = (plan: TripPlan) => {
+  tripStore.setTripPlan(plan)
+  void router.push('/result')
+}
 
 const loading = ref(false)
 const loadingProgress = ref(0)
 const loadingStatus = ref('')
-const scrollY = ref(0)
+/** 云模式的结构化阶段：来自流式文本的真实结构，见 cloudLLM.ts 的 analyzeStream */
+const progressMeta = ref<PlanProgressMeta | null>(null)
+const elapsedSec = ref(0)
+const whisperIndex = ref(0)
 const formRef = ref<HTMLElement | null>(null)
 const panelRef = ref<HTMLElement | null>(null)
 const panelHeight = ref<number | string>('auto')
-const fogEnabled = ref(true)
 const planCode = ref(`PLAN${Math.floor(100000 + Math.random() * 900000)}`)
+
+/* ---------------- 云模式：生成过程的可视化 ---------------- */
+
+/** 与 cloudLLM.ts 的 PlanProgressMeta.stage 一一对应，顺序即流程顺序 */
+const CLOUD_STAGES = ['understand', 'days', 'weather', 'budget', 'finalize'] as const
+
+const cloudStages = computed(() => {
+  const currentStage = progressMeta.value?.stage ?? 'understand'
+  const currentIndex = CLOUD_STAGES.indexOf(currentStage)
+  const total = Math.max(1, progressMeta.value?.daysTotal ?? formData.travel_days ?? 1)
+  const seen = Math.min(progressMeta.value?.daysSeen ?? 0, total)
+
+  return CLOUD_STAGES.map((key, index) => {
+    const state: 'done' | 'active' | 'pending' =
+      index < currentIndex ? 'done' : index === currentIndex ? 'active' : 'pending'
+    // 只有 days 这一阶段有可量化的子进度；没排到任何一天时不报数，避免「第 0 / 3 天」这种没信息量的话
+    const detail =
+      key === 'days' && state !== 'pending' && seen > 0
+        ? t('home.loading.daysCount', { done: seen, total })
+        : ''
+    return { key, state, label: t(`home.loading.stage.${key}`), detail }
+  })
+})
+
+/** 自建后端模式的四段式节点（与进度阈值绑定） */
+const backendNodes = computed(() => {
+  const p = loadingProgress.value
+  const mk = (key: string, active: boolean, done: boolean, doneKey: string, activeKey: string) => ({
+    key,
+    state: done ? 'done' : active ? 'active' : 'pending',
+    label: done ? t(`home.loading.${doneKey}`) : t(`home.loading.${activeKey}`),
+  })
+  return [
+    mk('attractions', p >= 0 && p <= 30, p > 30, 'searchedAttractions', 'searchingAttractions'),
+    mk('weather', p > 30 && p <= 50, p > 50, 'queriedWeather', 'queryingWeather'),
+    mk('hotels', p > 50 && p <= 70, p > 70, 'recommendedHotels', 'recommendingHotels'),
+    mk('plan', p > 70 && p < 100, p >= 100, 'done', 'generatingPlan'),
+  ]
+})
+
+/** 陪伴文案：用户明确要的「情绪价值」，与真实进度无关，只负责让等待不那么干 */
+const whispers = computed<string[]>(() => {
+  void locale.value // 让 computed 跟着语言切换重算
+  const raw = tm('home.loading.whispers') as unknown
+  return Array.isArray(raw) ? raw.map((item) => String(item)) : []
+})
+
+const whisper = computed(() => {
+  const list = whispers.value
+  if (list.length === 0) return ''
+  return list[whisperIndex.value % list.length]
+})
+
+const transportationOptions = computed(() => [
+  { value: '公共交通', label: t('home.transportation.public') },
+  { value: '自驾', label: t('home.transportation.drive') },
+  { value: '步行', label: t('home.transportation.walk') },
+  { value: '混合', label: t('home.transportation.mixed') },
+])
+
+const accommodationOptions = computed(() => [
+  { value: '经济型酒店', label: t('home.accommodation.budget') },
+  { value: '舒适型酒店', label: t('home.accommodation.comfort') },
+  { value: '豪华酒店', label: t('home.accommodation.luxury') },
+  { value: '民宿', label: t('home.accommodation.homestay') },
+])
 
 const interestOptions = [
   { value: '历史文化', labelKey: 'home.interests.history' },
@@ -269,12 +405,6 @@ const interestOptions = [
   { value: '艺术', labelKey: 'home.interests.art' },
   { value: '休闲', labelKey: 'home.interests.leisure' },
 ]
-
-const formRules = computed(() => ({
-  city: [{ required: true, message: t('home.cityRequired') }],
-  startDate: [{ required: true, message: t('home.startDateRequired') }],
-  endDate: [{ required: true, message: t('home.endDateRequired') }],
-}))
 
 const formData = reactive<LandingFormData>({
   city: '',
@@ -287,41 +417,78 @@ const formData = reactive<LandingFormData>({
   free_text_input: '',
 })
 
-const heroProgress = computed(() => Math.min(scrollY.value / 320, 1))
-const toneProgress = computed(() => Math.min(Math.max((scrollY.value - 20) / 360, 0), 1))
-const pageHeaderStyle = computed(() => ({
-  backgroundImage: "url('http://demos.creative-tim.com/paper-kit-2/assets/img/antoine-barres.jpg')",
-  backgroundPosition: `center ${Math.max(-scrollY.value * 0.08, -120)}px`,
-  backgroundSize: 'cover',
-  backgroundRepeat: 'no-repeat',
-}))
-const movingCloudsStyle = computed(() => ({
-  backgroundImage: "url('https://demos.creative-tim.com/paper-kit-2/assets/img/clouds.png')",
-  opacity: fogEnabled.value ? '0.55' : '0',
-}))
-const fogLowStyle = computed(() => ({
-  opacity: fogEnabled.value ? '0.82' : '0',
-}))
-const fogLowRightStyle = computed(() => ({
-  opacity: fogEnabled.value ? '0.72' : '0',
-}))
-const heroContentStyle = computed(() => ({
-  opacity: `${1 - heroProgress.value * 0.95}`,
-  transform: `translate3d(0, ${-heroProgress.value * 46}px, 0)`,
-}))
-const heroBottomShadeStyle = computed(() => ({
-  opacity: `${(0.48 + toneProgress.value * 0.44) * (fogEnabled.value ? 1 : 0)}`,
-}))
-const lowerShadeStyle = computed(() => ({
-  opacity: `${(0.34 + toneProgress.value * 0.52) * (fogEnabled.value ? 1 : 0)}`,
-}))
-const formRevealStyle = computed(() => {
-  const progress = Math.min(Math.max((scrollY.value - 80) / 340, 0), 1)
-  return {
-    opacity: `${0.2 + progress * 0.8}`,
-    transform: `translate3d(0, ${(1 - progress) * 56}px, 0)`,
+/* ---------- 目的地城市：高德输入联想 ---------- */
+
+type CitySuggestion = { label: string; value: string }
+
+const citySuggestOptions = ref<CitySuggestion[]>([])
+const citySuggestLoading = ref(false)
+
+/** AutoComplete 实例只建一次；高德这个服务的构造开销不值当每次输入都重建 */
+let cityAutoComplete: any = null
+let cityDebounceTimer: ReturnType<typeof setTimeout> | null = null
+/** 输入是异步回调，用一个自增序号丢弃过期结果 —— 否则慢的那次会覆盖新的联想列表 */
+let cityRequestSeq = 0
+
+const ensureCityAutoComplete = async () => {
+  if (cityAutoComplete) return cityAutoComplete
+  const AMap = await loadAMap().catch(() => null)
+  if (!AMap || typeof AMap.AutoComplete !== 'function') return null
+  cityAutoComplete = new AMap.AutoComplete({ city: '全国' })
+  return cityAutoComplete
+}
+
+const fetchCitySuggestions = async (keyword: string) => {
+  const service = await ensureCityAutoComplete()
+  // 没配高德 Key 就静默降级：用户照样能手打城市名
+  if (!service) return
+
+  const seq = ++cityRequestSeq
+  citySuggestLoading.value = true
+
+  service.search(keyword, (status: string, result: unknown) => {
+    if (seq !== cityRequestSeq) return
+    citySuggestLoading.value = false
+
+    if (status !== 'complete') {
+      citySuggestOptions.value = []
+      return
+    }
+
+    const tips = (result as { tips?: Array<{ name?: string; district?: string }> })?.tips ?? []
+    citySuggestOptions.value = tips
+      .map((tip) => {
+        const name = String(tip?.name || '').trim()
+        // district 形如「中国浙江省杭州市西湖区」，截掉国家名更好读
+        const district = String(tip?.district || '').replace(/^中国/, '').trim()
+        return { label: district ? `${name} · ${district}` : name, value: name }
+      })
+      .filter((option) => option.value)
+  })
+}
+
+const handleCityInput = (value: string) => {
+  const keyword = (value || '').trim()
+
+  if (cityDebounceTimer) clearTimeout(cityDebounceTimer)
+
+  if (!keyword) {
+    cityRequestSeq += 1 // 清空时让在途请求作废，否则它回来又会把列表填上
+    citySuggestOptions.value = []
+    citySuggestLoading.value = false
+    return
   }
-})
+
+  // 防抖：逐字请求会打到高德限流，联想列表也会跳来跳去
+  cityDebounceTimer = setTimeout(() => {
+    void fetchCitySuggestions(keyword)
+  }, 260)
+}
+
+const handleCitySelect = () => {
+  // 选中之后把列表收掉，不然下拉会挡着下一格「出发日期」
+  citySuggestOptions.value = []
+}
 
 const togglePreference = (value: string) => {
   const index = formData.preferences.indexOf(value)
@@ -329,42 +496,47 @@ const togglePreference = (value: string) => {
   else formData.preferences.splice(index, 1)
 }
 
-const onScroll = () => {
-  scrollY.value = window.scrollY || 0
-}
 const scrollToTop = () => window.scrollTo({ top: 0, behavior: 'smooth' })
 const scrollToForm = () => {
   if (formRef.value) {
-    const y = formRef.value.getBoundingClientRect().top + window.scrollY - 65
+    const navH = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--nav-h'), 10) || 64
+    const y = formRef.value.getBoundingClientRect().top + window.scrollY - navH
     window.scrollTo({ top: y, behavior: 'smooth' })
   }
 }
 
-onMounted(() => {
-  onScroll()
-  window.addEventListener('scroll', onScroll, { passive: true })
-})
-onUnmounted(() => {
-  window.removeEventListener('scroll', onScroll)
-})
-
 watch([() => formData.start_date, () => formData.end_date], ([start, end]) => {
   if (start && end) {
-    const days = end.diff(start, 'day') + 1
+    const days = dayjs(end).diff(dayjs(start), 'day') + 1
     if (days > 0 && days <= 30) formData.travel_days = days
     else if (days > 30) {
-      message.warning(t('home.messages.travelDaysTooLong'))
+      feedback.warning(t('home.messages.travelDaysTooLong'))
       formData.end_date = null
     } else {
-      message.warning(t('home.messages.endDateEarlier'))
+      feedback.warning(t('home.messages.endDateEarlier'))
       formData.end_date = null
     }
   }
 })
 
+/** 生成成功后写入云端行程库；未登录不打断主流程，只是不保存 */
+const persistTrip = async (plan: TripPlan) => {
+  if (!authStore.isSignedIn) return
+  try {
+    await saveTrip(plan, `${plan.city} · ${plan.start_date} ~ ${plan.end_date}`)
+    feedback.success(t('trips.saved'))
+    void myTripsRef.value?.load()
+  } catch (err) {
+    console.error('[cloud] 行程保存失败', err)
+    feedback.warning(
+      err instanceof Error && err.message === 'AUTH_REQUIRED' ? t('trips.needLogin') : t('trips.saveFailed'),
+    )
+  }
+}
+
 const handleSubmit = async () => {
   if (!formData.start_date || !formData.end_date) {
-    message.error(t('home.messages.selectDate'))
+    feedback.error(t('home.messages.selectDate'))
     return
   }
 
@@ -375,23 +547,56 @@ const handleSubmit = async () => {
   loading.value = true
   loadingProgress.value = 0
   loadingStatus.value = t('home.loading.initializing')
+  progressMeta.value = null
+  elapsedSec.value = 0
+  whisperIndex.value = 0
   planCode.value = `${Math.floor(1000 + Math.random() * 9000)}`
 
-  const progressInterval = setInterval(() => {
-    if (loadingProgress.value < 90) {
+  // 进度来源分两种，不能混：
+  // - 云服务模式：整份行程由单次模型调用产出。阶段与百分比都从"已到达的流式文本结构"里
+  //   真实推出来（days / weather_info / budget 是模型顺序输出的字段，见 cloudLLM.analyzeStream）；
+  //   首字到达前只缓慢爬到 10%，不伪造中间步骤。
+  // - 自建后端模式：四个节点各自有真实任务，沿用按节拍的推进来点亮节点。
+  let firstChunkArrived = false
+  const progressTimer = setInterval(() => {
+    if (!hasOwnBackend) {
+      if (!firstChunkArrived && loadingProgress.value < 10) loadingProgress.value += 1
+    } else if (loadingProgress.value < 90) {
       loadingProgress.value += 10
-      if (loadingProgress.value <= 30) loadingStatus.value = t('home.loading.searchingAttractions')
-      else if (loadingProgress.value <= 50) loadingStatus.value = t('home.loading.queryingWeather')
-      else if (loadingProgress.value <= 70) loadingStatus.value = t('home.loading.recommendingHotels')
-      else loadingStatus.value = t('home.loading.generatingPlan')
     }
+  }, hasOwnBackend ? 1000 : 700)
+
+  // 秒表与陪伴文案轮播：纯粹给等待感兜底，不参与进度计算
+  const elapsedTimer = setInterval(() => {
+    elapsedSec.value += 1
   }, 1000)
+  const whisperTimer = setInterval(() => {
+    whisperIndex.value += 1
+  }, 3600)
+
+  const stopTickers = () => {
+    clearInterval(progressTimer)
+    clearInterval(elapsedTimer)
+    clearInterval(whisperTimer)
+  }
+
+  const onProgress = (text: string, percent?: number, meta?: PlanProgressMeta) => {
+    firstChunkArrived = true
+    // 云模式的 text 是服务层内部文案，界面统一用 i18n；后端模式的 text 是任务真实阶段，直接展示
+    loadingStatus.value = hasOwnBackend
+      ? text || t('home.loading.generatingPlan')
+      : t('home.loading.generatingPlan')
+    if (meta) progressMeta.value = meta
+    if (typeof percent === 'number') {
+      loadingProgress.value = Math.max(loadingProgress.value, Math.min(99, percent))
+    }
+  }
 
   try {
     const requestData: TripFormData = {
       city: formData.city,
-      start_date: formData.start_date.format('YYYY-MM-DD'),
-      end_date: formData.end_date.format('YYYY-MM-DD'),
+      start_date: dayjs(formData.start_date).format('YYYY-MM-DD'),
+      end_date: dayjs(formData.end_date).format('YYYY-MM-DD'),
       travel_days: formData.travel_days,
       transportation: formData.transportation,
       accommodation: formData.accommodation,
@@ -399,26 +604,28 @@ const handleSubmit = async () => {
       free_text_input: formData.free_text_input,
     }
 
-    const response = await generateTripPlan(requestData)
-    clearInterval(progressInterval)
+    const response = await generateTripPlan(requestData, onProgress)
     loadingProgress.value = 100
     loadingStatus.value = t('home.loading.done')
 
     if (response.success && response.data) {
       tripStore.setTripPlan(response.data, response.graph_data)
-      message.success(t('home.messages.generateSuccess'))
+      feedback.success(t('home.messages.generateSuccess'))
+      void persistTrip(response.data)
       setTimeout(() => router.push('/result'), 500)
     } else {
-      message.error(response.message || t('home.messages.generateFailed'))
+      feedback.error(response.message || t('home.messages.generateFailed'))
     }
   } catch (error: any) {
-    clearInterval(progressInterval)
-    message.error(error.message || t('home.messages.generateRetry'))
+    feedback.error(error.message || t('home.messages.generateRetry'))
   } finally {
+    stopTickers()
     setTimeout(() => {
       loading.value = false
       loadingProgress.value = 0
       loadingStatus.value = ''
+      progressMeta.value = null
+      elapsedSec.value = 0
       panelHeight.value = 'auto'
     }, 1000)
   }
@@ -428,525 +635,416 @@ const handleSubmit = async () => {
 <style scoped>
 .landing-page {
   min-height: 100vh;
-  background: linear-gradient(180deg, #0d171d 0%, #142430 58%, #0f1a22 100%);
-  color: #ecf3fa;
+  background: var(--c-bg-app);
+}
+
+/* ============================================================
+   主视觉
+   ============================================================ */
+.hero {
   position: relative;
-  isolation: isolate;
-  overflow-x: hidden; /* 防止水平溢出导致的出界感 */
-}
-
-.lower-shade {
-  position: fixed;
-  inset: 0% 0 -1px 0;
-  z-index: 0;
-  pointer-events: none;
-  background: rgba(6, 14, 20, 0.7);
-  transition: opacity 0.18s linear;
-}
-
-.lower-shade::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: -28px;
-  height: 28px;
-  background: linear-gradient(to bottom, rgba(6, 14, 20, 0), rgba(6, 14, 20, 0.92));
-}
-
-.landing-header {
-  /* 确保 hero 区域占满全屏高度，背景图不重复 */
-  height: 100vh;
-  min-height: 100vh;
-  position: relative;
-  display: block;
-  background-size: cover !important;
-  background-repeat: no-repeat !important;
-  background-position: center center !important;
   overflow: hidden;
-  z-index: 1;
+  padding: calc(var(--nav-h) + 56px) 0 52px;
+  background: linear-gradient(180deg, #fff8f4 0%, #ffffff 100%);
 }
 
-.landing-header .content-center {
-  margin-top: 0 !important;
-  height: 100vh;
-  width: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  /* 内容垂直居中，确保在 .filter::after 霁罩和 hero-bottom-shade 之上 */
-  position: relative;
-  z-index: 3;
-}
-
-.landing-header .content-center .container {
-  transform: translate3d(0, 45px, 0);
-}
-
-/* moving-clouds: 依赖 global.css 的定位 (bottom:0, width:250em, cloudLoop 80s) */
-/* .landing-header .moving-clouds {
-  transition: opacity 0.2s ease;
-  pointer-events: none;
-  z-index: 2;
-} */
-
-/* fog-low: 依赖 global.css 的定位 (margin-left:-35%, width:110%, bottom:0) */
-.fog-low {
-  pointer-events: none;
-  z-index: 2;
-  transition: opacity 0.2s ease;
-  /* margin-bottom: -35px; */
-}
-
-/* fog-low.right: 依赖 global.css 的 margin-left:30%; opacity:1 */
-
-.landing-hero-badge {
-  margin: 0 0 18px;
-  font-size: 12px;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  color: rgba(236, 243, 250, 0.78);
-}
-
-.landing-header .presentation-title {
-  font-size: clamp(44px, 7vw, 90px);
-  font-weight: 800;
-}
-
-.landing-header .presentation-subtitle {
-  max-width: 620px;
-  /* margin: 22px auto 0; */
-  color: rgba(224, 233, 242, 0.78);
-  font-size: clamp(15px, 1.8vw, 19px);
-  line-height: 1.75;
-  /* font-weight: 500; */
-  justify-self: center;
-}
-
-.hero-bottom-shade {
+.hero__glow {
   position: absolute;
-  inset: auto 0 0 0;
-  height: 56%;
-  z-index: 1;
+  border-radius: 50%;
+  filter: blur(64px);
   pointer-events: none;
-  background: linear-gradient(
-    to top,
-    rgba(6, 14, 20, 0.92) 0%,
-    rgba(6, 14, 20, 0.66) 46%,
-    rgba(6, 14, 20, 0) 100%
-  );
-  transition: opacity 0.18s linear;
 }
 
+/* 只留品牌色系的柔光，去掉原来那片蓝紫（与暖橙主色相互打架） */
+.hero__glow--a {
+  width: 520px;
+  height: 520px;
+  top: -240px;
+  left: -140px;
+  background: radial-gradient(circle, rgba(255, 107, 53, 0.2), transparent 70%);
+}
 
-.form-section {
-  margin-top: -112px;
-  padding: 0 20px 86px;
+.hero__glow--b {
+  width: 460px;
+  height: 460px;
+  right: -160px;
+  bottom: -260px;
+  background: radial-gradient(circle, rgba(232, 85, 32, 0.13), transparent 70%);
+}
+
+.hero__inner {
   position: relative;
-  z-index: 3;
+  z-index: 1;
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 0 var(--layout-gutter);
+  text-align: center;
+}
+
+.hero__eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 13px 5px 10px;
+  border-radius: var(--r-full);
+  background: var(--c-brand-50);
+  border: 1px solid var(--c-brand-100);
+  color: var(--c-brand-700);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-medium);
+  letter-spacing: 0.01em;
+}
+
+.hero__eyebrow svg {
+  width: 14px;
+  height: 14px;
+}
+
+.hero__title {
+  margin: 20px 0 0;
+  font-size: clamp(30px, 5vw, 46px);
+  font-weight: var(--fw-semibold);
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+  color: var(--c-ink-900);
+}
+
+.hero__sub {
+  max-width: 620px;
+  margin: 18px auto 0;
+  font-size: var(--fs-md);
+  line-height: var(--lh-normal);
+  color: var(--c-ink-400);
+}
+
+/* ============================================================
+   表单
+   ============================================================ */
+.form-section {
+  position: relative;
+  z-index: 2;
+  padding: 0 var(--layout-gutter) var(--sp-9);
 }
 
 .form-panel {
+  width: 100%;
   max-width: 1000px;
-  margin: 0 auto;
-  border: 1.2px solid rgba(236, 243, 250, 0.2);
-  border-radius: 22px;
-  background: rgba(12, 23, 32, 0.56);
-  backdrop-filter: blur(18px);
-  box-shadow: 0 24px 80px rgba(4, 11, 18, 0.52);
-  padding: 20px;
-  transition: 0.25s;
+  margin: -8px auto 0;
+  padding: var(--sp-8);
+  border-radius: var(--r-xl);
+  background: var(--c-bg-card);
+  border: 1px solid var(--c-border);
+  box-shadow: 0 20px 50px rgba(22, 24, 29, 0.08), 0 4px 12px rgba(22, 24, 29, 0.04);
+  transition: min-height var(--dur-base) var(--ease-out);
 }
 
-.step {
-  margin-bottom: 8px;
+.steps {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-7);
 }
 
-.step-head {
+.step__head {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin-bottom: 10px;
+  gap: 10px;
+  margin-bottom: var(--sp-5);
 }
 
-.step-head span {
-  width: 26px;
-  height: 23px;
-  border-radius: 6px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(215, 110, 66, 0.2);
-  border: 1.2px solid rgba(215, 110, 66, 0.4);
-  color: rgba(253, 225, 211, 0.95);
-  font-size: 12px;
-  font-weight: 700;
-}
-
-.step-head h3 {
-  margin: 0;
-  font-size: 16px;
-  font-weight: 600;
-  color: rgba(240, 246, 252, 0.94);
-}
-
-.grid {
+.step__num {
   display: grid;
-  gap: 12px;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  flex: 0 0 auto;
+  border-radius: var(--r-sm);
+  background: var(--c-brand-50);
+  color: var(--c-brand-700);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-semibold);
+  font-variant-numeric: tabular-nums;
 }
 
-.grid4 {
-  grid-template-columns: 1.5fr 1fr 1fr 0.8fr;
+.step__title {
+  font-size: var(--fs-md);
+  font-weight: var(--fw-semibold);
+  color: var(--c-ink-800);
 }
 
-.grid2 {
-  grid-template-columns: 1fr 1fr;
+.step__grid {
+  display: grid;
+  gap: var(--sp-5);
 }
 
-.field-label {
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: rgba(228, 236, 245, 0.72);
+.step__grid--4 {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
-.field-input.ant-input,
-.field-input.ant-input-lg,
-.field-input.ant-picker,
-.field-select :deep(.ant-select-selector),
-.field-textarea :deep(textarea),
-.field-textarea :deep(.ant-input),
-.field-textarea.ant-input,
-.special-textarea.ant-input {
-  border: 1.2px solid rgba(236, 243, 250, 0.2) !important;
-  border-radius: 12px !important;
-  background: rgba(14, 27, 38, 0.66) !important;
-  background-color: rgba(14, 27, 38, 0.66) !important;
-  background-image: none !important;
-  color: #ecf3fa !important;
+.step__grid--2 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
-/* 浏览器自动填充（Autofill）背景色修复 */
-:deep(.field-input.ant-input:-webkit-autofill),
-:deep(.field-input.ant-input:-webkit-autofill:hover),
-:deep(.field-input.ant-input:-webkit-autofill:focus),
-:deep(.field-input.ant-input:-webkit-autofill:active),
-:deep(.field-input .ant-picker-input > input:-webkit-autofill),
-:deep(.field-textarea textarea:-webkit-autofill),
-:deep(.special-textarea:-webkit-autofill) {
-  -webkit-box-shadow: 0 0 0 1000px #0e1b26 inset !important;
-  -webkit-text-fill-color: #ecf3fa !important;
-  transition: background-color 5000s ease-in-out 0s !important;
-}
-
-.field-input.ant-input::placeholder,
-:deep(.field-input .ant-picker-input > input::placeholder),
-.field-textarea :deep(textarea::placeholder),
-.field-textarea.ant-input::placeholder {
-  color: rgba(228, 236, 245, 0.4) !important;
-}
-
-.field-input.ant-input:hover,
-.field-input.ant-picker:hover,
-.field-select:hover :deep(.ant-select-selector),
-.field-textarea :deep(textarea:hover),
-.field-textarea.ant-input:hover {
-  border-color: rgba(236, 243, 250, 0.42) !important;
-}
-
-.field-input.ant-input:focus,
-.field-input.ant-picker-focused,
-.field-textarea :deep(textarea:focus),
-.field-textarea.ant-input:focus {
-  border-color: rgba(215, 110, 66, 0.88) !important;
-  box-shadow: 0 0 0 3px rgba(215, 110, 66, 0.2) !important;
-  background: rgba(14, 27, 38, 0.66) !important;
-  outline: none !important;
-}
-
-:deep(.field-input .ant-picker-input > input),
-.field-select :deep(.ant-select-selection-item),
-:deep(.field-input .ant-picker-suffix),
-:deep(.field-input .ant-picker-clear),
-.field-select :deep(.ant-select-arrow) {
-  color: #ecf3fa !important;
-}
-
-.days-chip {
-  min-height: 40px;
-  border-radius: 12px;
-  border: 1.2px solid rgba(215, 110, 66, 0.42);
-  background: rgba(19, 34, 46, 0.8);
+.field {
   display: flex;
-  align-items: center;
+  flex-direction: column;
+  gap: 7px;
+  min-width: 0;
+}
+
+.field--block {
+  margin-top: var(--sp-5);
+}
+
+.field__label {
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-medium);
+  color: var(--c-ink-700);
+}
+
+/* 天数：与 large 尺寸的输入控件对齐（Naive large = 44px） */
+.days-chip {
+  display: inline-flex;
+  align-items: baseline;
   justify-content: center;
-  gap: 8px;
+  gap: 5px;
+  height: 44px;
+  padding: 0 14px;
+  border-radius: var(--r-md);
+  background: var(--c-brand-50);
+  border: 1px solid var(--c-brand-100);
 }
 
-.days-number {
-  color: rgba(236, 243, 250, 0.72);
-  font-size: 18px;
-  line-height: 1;
-  font-weight: 700;
+.days-chip__num {
+  font-size: var(--fs-lg);
+  font-weight: var(--fw-semibold);
+  color: var(--c-brand-700);
+  font-variant-numeric: tabular-nums;
 }
 
-.days-unit {
-  font-size: 16px;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: rgba(224, 233, 242, 0.74);
-  font-weight: 700;
+.days-chip__unit {
+  font-size: var(--fs-sm);
+  color: var(--c-brand-600);
 }
 
 .interest-grid {
-  width: 100%;
-}
-
-.interest-group {
-  display: grid !important;
-  grid-template-columns: repeat(6, 1fr);
-  gap: 8px;
-  width: 100%;
-}
-
-.interest-group :deep(.ant-checkbox-wrapper) {
-  display: none !important;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
 }
 
 .interest-pill {
-  min-height: 38px;
-  border-radius: 10px;
-  border: 1.2px solid rgba(236, 243, 250, 0.16);
-  background: rgba(15, 28, 38, 0.6);
-  color: rgba(232, 239, 247, 0.84);
-  font-size: 12px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  user-select: none;
-  transition: all 0.55s cubic-bezier(0.25, 0.8, 0.25, 1);
+  padding: 9px 17px;
+  border-radius: var(--r-full);
+  border: 1px solid var(--c-border);
+  background: #fff;
+  color: var(--c-ink-600);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-medium);
+  transition: border-color var(--dur-fast) var(--ease-out), background var(--dur-fast) var(--ease-out),
+    color var(--dur-fast) var(--ease-out);
 }
 
 .interest-pill:hover {
-  background: rgba(236, 243, 250, 0.08);
-  border-color: rgba(236, 243, 250, 0.3);
-  /* transform: translateY(-2px); */
-  box-shadow: 0 4px 12px rgba(4, 11, 18, 0.3);
+  border-color: var(--c-brand-300);
+  color: var(--c-brand-700);
 }
 
-.interest-pill:active {
-  transform: translateY(1px) scale(0.96);
-  box-shadow: 0 2px 4px rgba(4, 11, 18, 0.2);
+.interest-pill.is-active {
+  background: var(--c-brand-50);
+  border-color: var(--c-brand-400);
+  color: var(--c-brand-700);
 }
 
-.interest-pill.active {
-  border-color: rgba(215, 110, 66, 0.8);
-  background: rgba(215, 110, 66, 0.2);
-}
-
-.interest-pill.active:hover {
-  background: rgba(215, 110, 66, 0.28);
-  border-color: rgba(215, 110, 66, 1);
+.submit-row {
+  margin-top: var(--sp-2);
 }
 
 .submit-btn {
-  width: 100%;
-  min-height: 48px;
-  border-radius: 12px;
-  /* border: 1px solid rgba(236, 243, 250, 0.28);
-  background: linear-gradient(135deg, #d76e42, #a14625);
-  color: #fff; */
-  font-size: 13px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  cursor: pointer;
+  height: 48px;
+  font-size: var(--fs-md);
+  font-weight: var(--fw-semibold);
 }
 
-.submit-btn.loading {
-  background: rgba(14, 27, 38, 0.66);
-  cursor: wait;
-}
-
-.loading-row {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.spinner {
-  width: 15px;
-  height: 15px;
-  border-radius: 50%;
-  border: 2px solid rgba(236, 243, 250, 0.24);
-  border-top-color: #fff;
-  animation: spin 0.8s linear infinite;
-}
-
-.spinner-small {
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
-  border: 2.5px solid rgba(215, 110, 66, 0.24);
-  border-top-color: #d76e42;
-  animation: spin 0.8s linear infinite;
-}
-
-/* 节点动画相关样式 */
-.stepper-wrapper {
+/* ============================================================
+   生成过程面板
+   ============================================================ */
+.loading {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  height: 100%;
-  min-height: 480px;
-  animation: fadeIn 0.4s ease;
-  padding: 30px 20px;
-  box-sizing: border-box;
+  gap: var(--sp-6);
+  padding: var(--sp-2) 0;
 }
 
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-.stepper-header {
+.loading__head {
   text-align: center;
-  margin-bottom: 50px;
 }
 
-.stepper-title {
-  font-size: 28px;
-  font-weight: 700;
-  color: #fff;
-  margin-bottom: 8px;
-  letter-spacing: 0.05em;
+.loading__title {
+  font-size: var(--fs-lg);
+  font-weight: var(--fw-semibold);
+  color: var(--c-ink-900);
 }
 
-.stepper-subtitle {
-  font-size: 15px;
-  color: rgba(236, 243, 250, 0.54);
+.loading__sub {
+  margin-top: 6px;
+  font-size: var(--fs-sm);
+  color: var(--c-ink-400);
 }
 
-.stepper-container {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  width: 100%;
-  max-width: 680px;
-  margin: 0 auto 50px auto;
+.loading__note {
+  font-size: var(--fs-xs);
+  line-height: var(--lh-snug);
+  color: var(--c-ink-300);
+  text-align: center;
 }
 
-.step-node {
+.loading__foot {
+  text-align: center;
+}
+
+.loading__foot h3 {
+  font-size: var(--fs-md);
+  font-weight: var(--fw-semibold);
+  color: var(--c-ink-800);
+}
+
+.loading__foot p {
+  margin-top: 4px;
+  font-size: var(--fs-sm);
+  color: var(--c-ink-400);
+}
+
+/* ---- 云模式：进度条 + 阶段清单 ---- */
+.progress {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  width: 100px;
-  z-index: 2;
+  gap: var(--sp-4);
 }
 
-.node-icon {
-  width: 52px;
-  height: 52px;
-  border-radius: 50%;
-  background: rgba(14, 27, 38, 0.8);
-  border: 1.5px solid rgba(236, 243, 250, 0.16);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-bottom: 12px;
-  color: rgba(236, 243, 250, 0.4);
-  transition: all 0.35s ease;
-}
-
-.step-node.active .node-icon {
-  border-color: #d76e42;
-  background: rgba(215, 110, 66, 0.14);
-  color: #d76e42;
-  box-shadow: 0 0 16px rgba(215, 110, 66, 0.25);
-}
-
-.step-node.completed .node-icon {
-  background: #d76e42;
-  border-color: #d76e42;
-  color: #fff;
-  box-shadow: 0 0 12px rgba(215, 110, 66, 0.3);
-}
-
-.node-text {
-  font-size: 12px;
-  font-weight: 600;
-  color: rgba(236, 243, 250, 0.4);
-  text-align: center;
-  transition: color 0.35s ease;
-  line-height: 1.3;
-}
-
-.step-node.active .node-text {
-  color: #d76e42;
-}
-
-.step-node.completed .node-text {
-  color: rgba(236, 243, 250, 0.85);
-}
-
-.step-divider {
-  flex: 1;
-  height: 3px;
-  background: rgba(236, 243, 250, 0.08);
-  margin-top: 25px; /* (52px / 2) - 1.5px */
-  border-radius: 2px;
-  position: relative;
+.progress__bar {
+  height: 6px;
+  border-radius: var(--r-full);
+  background: var(--c-bg-sunken);
   overflow: hidden;
 }
 
-.step-divider::after {
-  content: '';
-  position: absolute;
-  top: 0; left: 0; bottom: 0; width: 0%;
-  background: #d76e42;
-  transition: width 0.45s ease;
+.progress__fill {
+  height: 100%;
+  border-radius: var(--r-full);
+  background: linear-gradient(90deg, var(--c-brand-400), var(--c-brand-600));
+  transition: width var(--dur-slow) var(--ease-out);
 }
 
-.step-divider.completed::after {
-  width: 100%;
+.progress__meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: var(--fs-sm);
+  font-variant-numeric: tabular-nums;
 }
 
-.stepper-footer {
+.progress__percent {
+  font-weight: var(--fw-semibold);
+  color: var(--c-brand-600);
+}
+
+.progress__elapsed {
+  color: var(--c-ink-400);
+}
+
+.stage-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.stage {
+  display: flex;
+  align-items: flex-start;
+  gap: 11px;
+  padding: 9px 12px;
+  border-radius: var(--r-md);
+  transition: background var(--dur-base) var(--ease-out);
+}
+
+.stage--active {
+  background: var(--c-brand-50);
+}
+
+.stage__mark {
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
+  margin-top: 2px;
+}
+
+.stage__mark svg {
+  width: 15px;
+  height: 15px;
+  color: var(--c-brand-600);
+}
+
+.stage__dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--c-ink-200);
+}
+
+.stage__body {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+}
+
+.stage__label {
+  font-size: var(--fs-base);
+  color: var(--c-ink-300);
+  transition: color var(--dur-base) var(--ease-out);
+}
+
+.stage--active .stage__label {
+  color: var(--c-ink-800);
+  font-weight: var(--fw-medium);
+}
+
+.stage--done .stage__label {
+  color: var(--c-ink-600);
+}
+
+.stage__detail {
+  font-size: var(--fs-xs);
+  color: var(--c-brand-600);
+  font-variant-numeric: tabular-nums;
+}
+
+.whisper {
+  padding: 10px 14px;
+  border-radius: var(--r-md);
+  background: var(--c-bg-soft);
+  color: var(--c-ink-500);
+  font-size: var(--fs-sm);
   text-align: center;
-  margin-top: 10px;
 }
 
-.stepper-footer h3 {
-  font-size: 20px;
-  font-weight: 600;
-  color: #d76e42;
-  margin-bottom: 8px;
+.spinner {
+  display: inline-block;
+  width: 15px;
+  height: 15px;
+  border: 2px solid var(--c-brand-200);
+  border-top-color: var(--c-brand-600);
+  border-radius: 50%;
+  animation: spin 0.75s linear infinite;
 }
 
-.stepper-footer p {
-  font-size: 14px;
-  color: rgba(236, 243, 250, 0.54);
+.spinner--sm {
+  width: 14px;
+  height: 14px;
 }
-
-:deep(.ant-form-item-label > label) {
-  color: transparent !important;
-}
-
-:deep(.ant-form-item-explain-error) {
-  color: #ff9478 !important;
-}
-
-/* @keyframes cloudLoop {
-  from {
-    transform: translate3d(0, 0, 0);
-  }
-  to {
-    transform: translate3d(-50%, 0, 0);
-  }
-} */
 
 @keyframes spin {
   to {
@@ -954,50 +1052,113 @@ const handleSubmit = async () => {
   }
 }
 
-@media (max-width: 1080px) {
-  .grid4 {
-    grid-template-columns: 1fr 1fr;
+/* ---- 后端模式：四节点串联 ---- */
+.node-track {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+
+.node {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-3) var(--sp-4);
+  border-radius: var(--r-md);
+  border: 1px solid var(--c-border);
+  background: var(--c-bg-card);
+  transition: border-color var(--dur-base) var(--ease-out), background var(--dur-base) var(--ease-out);
+}
+
+.node--active {
+  border-color: var(--c-brand-300);
+  background: var(--c-brand-50);
+}
+
+.node--done {
+  border-color: var(--c-success-soft);
+  background: var(--c-success-soft);
+}
+
+.node__icon {
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  flex: 0 0 auto;
+  color: var(--c-ink-300);
+}
+
+.node--done .node__icon {
+  color: var(--c-success);
+}
+
+.node__icon svg {
+  width: 18px;
+  height: 18px;
+}
+
+.node__text {
+  font-size: var(--fs-base);
+  color: var(--c-ink-400);
+}
+
+.node--active .node__text {
+  color: var(--c-ink-800);
+  font-weight: var(--fw-medium);
+}
+
+.node--done .node__text {
+  color: var(--c-ink-700);
+}
+
+.node__line {
+  display: none;
+}
+
+/* ============================================================
+   响应式
+   ============================================================ */
+@media (max-width: 900px) {
+  .form-panel {
+    padding: var(--sp-6);
   }
 
-  .interest-group {
-    grid-template-columns: repeat(3, 1fr);
+  .step__grid--4 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
-@media (max-width: 991px) {
-  .form-section {
-    padding: 0 14px 72px;
+@media (max-width: 600px) {
+  .hero {
+    padding: calc(var(--nav-h) + 36px) 0 36px;
+  }
+
+  .hero__title {
+    font-size: clamp(26px, 8vw, 34px);
+  }
+
+  .hero__sub {
+    font-size: var(--fs-base);
   }
 
   .form-panel {
-    padding: 22px 18px;
+    padding: var(--sp-5) var(--sp-4);
+    border-radius: var(--r-lg);
   }
 
-  .grid4,
-  .grid2 {
-    grid-template-columns: 1fr;
-  }
-}
-
-@media (max-width: 520px) {
-  .landing-header .presentation-title {
-    font-size: clamp(34px, 10vw, 52px);
+  .steps {
+    gap: var(--sp-6);
   }
 
-  .landing-header .presentation-subtitle {
-    font-size: 14px;
-    padding: 0 10px;
+  .step__grid--4,
+  .step__grid--2 {
+    grid-template-columns: minmax(0, 1fr);
   }
 
-  .landing-header .content-center .container {
-    transform: translate3d(0, 16px, 0);
+  .days-chip {
+    width: 100%;
   }
-
-  .interest-group {
-    grid-template-columns: repeat(2, 1fr);
-  }
-}
-</style>
-
 }
 </style>

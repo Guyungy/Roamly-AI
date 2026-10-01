@@ -16,7 +16,7 @@
   },
   "common": {
     "dayNumber": "Day {day}",
-    "dayCount": "{count} days",
+    "dayCount": "{count} day | {count} days",
     "to": "to",
     "loading": "Loading...",
     "noData": "No data",
@@ -24,7 +24,8 @@
     "edit": "Edit",
     "save": "Save",
     "cancel": "Cancel",
-    "delete": "Delete"
+    "delete": "Delete",
+    "close": "Close"
   },
   "api": {
     "submitTripPlanFailed": "Failed to submit trip plan",
@@ -54,7 +55,7 @@
     "endDatePlaceholder": "Select return date",
     "endDateRequired": "Please select an end date",
     "travelDaysLabel": "Trip Duration",
-    "travelDaysUnit": "days",
+    "travelDaysUnit": "day | days",
     "transportationLabel": "Transportation",
     "transportation": {
       "public": "Public Transit",
@@ -94,7 +95,27 @@
       "preparing": "Please wait, we are preparing for you...",
       "workingTogether": "Our AI agents are working together to craft your journey...",
       "donePrepare": "Done! Prepare for departure...",
-      "done": "Done!"
+      "cloudHint": "The cloud model is writing your full itinerary. Please keep this page open.",
+      "done": "Done!",
+      "elapsed": "{sec}s elapsed",
+      "honestNote": "One model call renders the whole plan — progress is estimated from what has streamed in",
+      "daysCount": "Day {done} of {total} drafted",
+      "stage": {
+        "understand": "Reading your pace and preferences",
+        "days": "Mapping each day's route and sights",
+        "weather": "Checking that week's weather",
+        "budget": "Adding up tickets and budget",
+        "finalize": "Assembling your trip guide"
+      },
+      "whispers": [
+        "Shuffling the busiest spots to hours when the queues are shorter.",
+        "Keeping each day on one line so you rarely double back.",
+        "If you travel with elders, I break up the steep and long walks.",
+        "Comparing a few similarly priced stays to save you the commute.",
+        "A good itinerary is worth a few extra seconds — no rush.",
+        "Any restaurant that misses the mark, just ask me to swap it.",
+        "Locking in the must-sees first, leaving the rest to the day itself."
+      ]
     },
     "messages": {
       "travelDaysTooLong": "Trip duration cannot exceed 30 days",
@@ -122,6 +143,8 @@
       "weather": "Weather"
     },
     "overviewTitle": "{city} Trip Plan",
+    "prevAttraction": "Previous attractions",
+    "nextAttraction": "Next attractions",
     "dateLabel": "Dates:",
     "suggestionLabel": "Suggestions:",
     "dateRange": "{start} to {end}",
@@ -191,6 +214,7 @@
       "quickMealQuestion": "What are the prices of recommended restaurants?",
       "placeholder": "Ask your itinerary question...",
       "send": "Send",
+      "stop": "Stop",
       "replyFallback": "Sorry, no reply was received. Please try again later",
       "networkError": "Network error, please check whether backend service is running"
     },
@@ -211,7 +235,9 @@
       "pdfSuccess": "PDF exported successfully!",
       "pdfFailed": "PDF export failed: {error}",
       "mapLoaded": "Map loaded successfully",
-      "mapLoadFailed": "Failed to load map"
+      "mapLoadFailed": "Failed to load map",
+      "mapUnavailable": "AMap key is not configured, map is unavailable",
+      "mapRetry": "Reload"
     },
     "graph": {
       "type": "Type",
@@ -251,7 +277,95 @@
     },
     "imageLoadFailed": "Image failed to load",
     "mapInfo": {
-      "dayAttraction": "Day {day} Attraction {index}"
+      "dayAttraction": "Day {day} · Stop {index}",
+      "routeTitle": "Route overview",
+      "routeRow": "{segments} leg · {distance} · {duration} | {segments} legs · {distance} · {duration}",
+      "routeFallback": "{count} leg(s) had no real route and are drawn as straight lines",
+      "kilometers": "{value} km",
+      "meters": "{value} m",
+      "minutes": "{minutes} min",
+      "hoursMinutes": "{hours} h {minutes} min",
+      "tel": "Phone",
+      "openInAmap": "Open in Amap",
+      "ratingLabel": "Rating",
+      "costLabel": "Per person",
+      "openHours": "Opening hours"
+    },
+    "routeMode": {
+      "driving": "Drive",
+      "walking": "Walk",
+      "transit": "Transit",
+      "riding": "Cycle",
+      "straight": "Straight line"
     }
+  },
+  "auth": {
+    "subtitle": "Sign in to save trips to the cloud and open them on any device.",
+    "title": "Sign in to Chumenla",
+    "signupTitle": "Create your account",
+    "resetTitle": "Reset password",
+    "tabPassword": "Password",
+    "tabOtp": "Email code",
+    "tabSignup": "Sign up",
+    "email": "Email",
+    "emailPlaceholder": "Enter your email address",
+    "password": "Password",
+    "passwordPlaceholder": "Enter your password",
+    "passwordForSignup": "At least 8 characters, used for password sign-in",
+    "code": "Verification code",
+    "codePlaceholder": "Enter the code from your email",
+    "sendCode": "Send code",
+    "resendIn": "Resend in {seconds}s",
+    "login": "Sign in",
+    "signup": "Sign up",
+    "forgot": "Forgot password?",
+    "useOtp": "Sign in with a code",
+    "usePassword": "Sign in with password",
+    "backToLogin": "Back to sign in",
+    "resetCode": "Reset code",
+    "newPassword": "New password",
+    "resetHint": "We will email a reset code to this address. Verify it to set a new password.",
+    "sendResetCode": "Send reset code",
+    "resetSubmit": "Set new password",
+    "otpHint": "An unregistered email creates an account; an existing one signs straight in.",
+    "signupHint": "A new account also needs a password, so you can sign in with it later.",
+    "signedIn": "Signed in",
+    "signOut": "Sign out",
+    "signOutTitle": "Sign out of this account?",
+    "notice": {
+      "signedIn": "Signed in",
+      "signedOut": "Signed out",
+      "codeSent": "Code sent — please check your inbox",
+      "existingUser": "You can sign in with a code for this email",
+      "resetCodeSent": "Reset code sent — please check your inbox"
+    },
+    "errors": {
+      "emailRequired": "Please enter your email",
+      "emailInvalid": "That email address looks invalid",
+      "passwordRequired": "Please enter your password",
+      "passwordTooShort": "Password must be at least 8 characters",
+      "codeRequired": "Please enter the verification code",
+      "otpNotSent": "Request a code for this email first",
+      "resetNotStarted": "Send the reset code first",
+      "sendCodeFailed": "Could not send the code, please try again later",
+      "codeFailed": "That code did not work, please try again",
+      "resetFailed": "Password reset failed, please try again",
+      "loginFailed": "Wrong email or password"
+    }
+  },
+  "trips": {
+    "title": "My trips",
+    "count": "{count} saved",
+    "refresh": "Refresh",
+    "needLogin": "Trips are stored in the cloud. Sign in to view and sync them.",
+    "empty": "No saved trips yet — generate one to get started.",
+    "open": "Open",
+    "loadFailed": "Could not load your trips, please try again later",
+    "saved": "Saved to My trips",
+    "saveFailed": "The trip was generated but could not be saved to the cloud",
+    "deleteTitle": "Delete trip",
+    "deleteConfirm": "Delete “{name}”? This cannot be undone.",
+    "deleteNotAllowed": "Nothing was deleted — the trip may not exist or is not yours",
+    "deleteFailed": "Delete failed, please try again later"
   }
 }

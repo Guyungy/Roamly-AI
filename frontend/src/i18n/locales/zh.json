@@ -24,7 +24,8 @@
     "edit": "编辑",
     "save": "保存",
     "cancel": "取消",
-    "delete": "删除"
+    "delete": "删除",
+    "close": "关闭"
   },
   "api": {
     "submitTripPlanFailed": "提交旅行计划失败",
@@ -94,7 +95,27 @@
       "preparing": "请稍等，正在为您准备...",
       "workingTogether": "AI 正在齐心协力为您定制旅程...",
       "donePrepare": "完成！准备出发...",
-      "done": "完成！"
+      "cloudHint": "云端模型正在生成完整行程，请保持页面打开",
+      "done": "完成！",
+      "elapsed": "已用 {sec} 秒",
+      "honestNote": "一次模型调用完成，进度按已生成的内容实时估算",
+      "daysCount": "已排到第 {done} / {total} 天",
+      "stage": {
+        "understand": "理解你的偏好与节奏",
+        "days": "编排每日动线与景点",
+        "weather": "核对那几天的天气",
+        "budget": "核算门票与预算",
+        "finalize": "整理成行前手册"
+      },
+      "whispers": [
+        "正在把热门点位的排队高峰错开，尽量让你少等一会儿。",
+        "尽量把每天的动线拉成一条线，少走回头路。",
+        "带长辈的话，需要爬坡和长走的段落我会打散。",
+        "在几个价位接近的住处里，挑通勤最省的那个。",
+        "好的行程值得多等几秒，我不赶时间。",
+        "哪家店不合口味，回来随时可以让我换。",
+        "先把必去的定下来，剩下的留给当天的心情。"
+      ]
     },
     "messages": {
       "travelDaysTooLong": "旅行天数不能超过 30 天",
@@ -122,6 +143,8 @@
       "weather": "天气信息"
     },
     "overviewTitle": "{city} 旅行计划",
+    "prevAttraction": "上一组景点",
+    "nextAttraction": "下一组景点",
     "dateLabel": "日期:",
     "suggestionLabel": "建议:",
     "dateRange": "{start} 至 {end}",
@@ -191,6 +214,7 @@
       "quickMealQuestion": "推荐的餐厅价格如何？",
       "placeholder": "输入您关于行程的问题...",
       "send": "发送",
+      "stop": "停止",
       "replyFallback": "抱歉，未能获取回复，请稍后再试",
       "networkError": "网络连接异常，请检查后端服务是否已启动"
     },
@@ -211,7 +235,9 @@
       "pdfSuccess": "PDF 导出成功!",
       "pdfFailed": "导出 PDF 失败: {error}",
       "mapLoaded": "地图加载成功",
-      "mapLoadFailed": "地图加载失败"
+      "mapLoadFailed": "地图加载失败",
+      "mapUnavailable": "未配置高德地图 Key，地图暂不可用",
+      "mapRetry": "重新加载"
     },
     "graph": {
       "type": "类型",
@@ -251,7 +277,95 @@
     },
     "imageLoadFailed": "图片加载失败",
     "mapInfo": {
-      "dayAttraction": "第 {day} 天 景点 {index}"
+      "dayAttraction": "第 {day} 天 景点 {index}",
+      "routeTitle": "路线概览",
+      "routeRow": "{segments} 段 · {distance} · {duration}",
+      "routeFallback": "有 {count} 段未取到真实路线，已用直线示意",
+      "kilometers": "{value} 公里",
+      "meters": "{value} 米",
+      "minutes": "{minutes} 分钟",
+      "hoursMinutes": "{hours} 小时 {minutes} 分",
+      "tel": "电话",
+      "openInAmap": "在高德地图查看",
+      "ratingLabel": "评分",
+      "costLabel": "人均",
+      "openHours": "营业时间"
+    },
+    "routeMode": {
+      "driving": "驾车",
+      "walking": "步行",
+      "transit": "公交",
+      "riding": "骑行",
+      "straight": "直线示意"
     }
+  },
+  "auth": {
+    "subtitle": "登录后行程会保存到云端，换设备也能随时回看。",
+    "title": "登录出门啦",
+    "signupTitle": "注册出门啦",
+    "resetTitle": "重置密码",
+    "tabPassword": "密码登录",
+    "tabOtp": "验证码登录",
+    "tabSignup": "注册",
+    "email": "邮箱",
+    "emailPlaceholder": "请输入邮箱地址",
+    "password": "密码",
+    "passwordPlaceholder": "请输入密码",
+    "passwordForSignup": "至少 8 位，用于后续密码登录",
+    "code": "验证码",
+    "codePlaceholder": "请输入邮件里的验证码",
+    "sendCode": "获取验证码",
+    "resendIn": "{seconds}s 后重发",
+    "login": "登录",
+    "signup": "注册并登录",
+    "forgot": "忘记密码？",
+    "useOtp": "用验证码登录",
+    "usePassword": "用密码登录",
+    "backToLogin": "返回登录",
+    "resetCode": "重置验证码",
+    "newPassword": "新密码",
+    "resetHint": "我们会往该邮箱发送一条重置验证码，验证后即可设置新密码。",
+    "sendResetCode": "发送重置验证码",
+    "resetSubmit": "设置新密码",
+    "otpHint": "未注册的邮箱会直接创建账号，已有账号则直接登录。",
+    "signupHint": "新账号需要同时设置密码，之后可用密码直接登录。",
+    "signedIn": "已登录",
+    "signOut": "退出登录",
+    "signOutTitle": "确定退出登录？",
+    "notice": {
+      "signedIn": "已登录",
+      "signedOut": "已退出登录",
+      "codeSent": "验证码已发送，请查收邮件",
+      "existingUser": "该邮箱可以直接用验证码登录",
+      "resetCodeSent": "重置验证码已发送，请查收邮件"
+    },
+    "errors": {
+      "emailRequired": "请输入邮箱",
+      "emailInvalid": "邮箱格式不正确",
+      "passwordRequired": "请输入密码",
+      "passwordTooShort": "密码至少 8 位",
+      "codeRequired": "请输入验证码",
+      "otpNotSent": "请先获取该邮箱的验证码",
+      "resetNotStarted": "请先发送重置验证码",
+      "sendCodeFailed": "验证码发送失败，请稍后重试",
+      "codeFailed": "验证码校验失败，请重新输入",
+      "resetFailed": "重置密码失败，请重试",
+      "loginFailed": "邮箱或密码不正确"
+    }
+  },
+  "trips": {
+    "title": "我的行程",
+    "count": "共 {count} 份",
+    "refresh": "刷新",
+    "needLogin": "行程保存在云端，登录后即可查看与同步。",
+    "empty": "还没有保存的行程，先去生成一份吧。",
+    "open": "查看",
+    "loadFailed": "行程列表读取失败，请稍后重试",
+    "saved": "已保存到我的行程",
+    "saveFailed": "行程已生成，但保存到云端失败",
+    "deleteTitle": "删除行程",
+    "deleteConfirm": "确定删除「{name}」？删除后无法恢复。",
+    "deleteNotAllowed": "没有删除成功，该行程可能不存在或不属于当前账号",
+    "deleteFailed": "删除失败，请稍后重试"
   }
 }

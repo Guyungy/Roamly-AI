@@ -60,8 +60,11 @@ export async function pollTaskStatus(taskId: string): Promise<any> {
 }
 
 // 轮询配置
+// 后端单任务上限为 10 分钟（TASK_TIMEOUT_SECONDS=600），
+// 客户端轮询窗口必须 ≥ 该上限，否则长行程会在后端仍执行时被前端误判超时。
 const POLL_INTERVAL_MS = 3000
-const MAX_POLL_RETRIES = 60
+const POLL_TIMEOUT_MS = 10 * 60 * 1000
+const MAX_POLL_RETRIES = Math.ceil(POLL_TIMEOUT_MS / POLL_INTERVAL_MS) // 200 次
 
 export interface TripPlanTask {
   promise: Promise<TripPlanResponse>
