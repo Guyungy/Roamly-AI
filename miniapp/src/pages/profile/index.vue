@@ -137,7 +137,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import { onShow } from '@dcloudio/uni-app'
+import { onShow, onShareAppMessage } from '@dcloudio/uni-app'
 import { useQuotaStore } from '@/stores/quota'
 import { useHistoryStore } from '@/stores/history'
 import { useQuotaAction } from '@/composables/useQuotaAction'
@@ -150,6 +150,11 @@ onShow(() => {
   quotaStore.ensureToday()
 })
 
+onShareAppMessage(() => ({
+  title: '出门啦 · AI 帮你把行程排好，说走就走',
+  path: '/pages/landing/index',
+}))
+
 const totalCities = computed(() => {
   const cities = new Set(historyStore.items.map(i => i.city))
   return cities.size
@@ -159,9 +164,17 @@ const totalDays = computed(() => {
   return historyStore.items.reduce((sum, i) => sum + i.days, 0)
 })
 
+/** 今日可获得的次数上限（免费 + 广告上限 + 邀请奖励），作为进度条基数 */
+const quotaMaxToday = computed(
+  () =>
+    quotaStore.DAILY_FREE +
+    quotaStore.AD_DAILY_LIMIT * quotaStore.AD_REWARD_PER_VIEW +
+    quotaStore.INVITE_REWARD
+)
+
 const quotaPercentage = computed(() => {
-  const total = 5 + 3 + 10 // 假设一个最大基数
-  return Math.min(100, (quotaStore.totalRemaining / total) * 100)
+  if (quotaMaxToday.value <= 0) return 0
+  return Math.min(100, Math.round((quotaStore.totalRemaining / quotaMaxToday.value) * 100))
 })
 
 function clearHistory() {
@@ -183,29 +196,8 @@ function clearHistory() {
 }
 
 function submitFeedback() {
-  // #ifdef MP-WEIXIN
-  // 微信小程序内置反馈入口
-  if (wx.openCustomerServiceChat) {
-    wx.openCustomerServiceChat({
-      extInfo: { url: '' },
-      corpId: '',
-      fail: () => {
-        uni.showModal({
-          title: '意见反馈',
-          editable: true,
-          placeholderText: '请输入你的建议或问题...',
-          confirmColor: '#FF6B35',
-          success: (res: any) => {
-            if (res.confirm && res.content) {
-              uni.showToast({ title: '感谢反馈！', icon: 'success' })
-            }
-          }
-        })
-      }
-    })
-    return
-  }
-  // #endif
+  // 原实现先调 wx.openCustomerServiceChat，但 corpId/extInfo 均为空值必然失败，
+  // 只会白白多一跳再回落到本地弹窗；这里直接走可用路径。
   uni.showModal({
     title: '意见反馈',
     editable: true,

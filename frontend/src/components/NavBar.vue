@@ -1,349 +1,275 @@
 <template>
-  <nav class="navbar navbar-toggleable-md fixed-top navbar-transparent landing-navbar">
-    <div class="container">
-      <div class="navbar-translate">
-        <button
-          class="navbar-toggler navbar-toggler-right navbar-burger landing-burger"
-          type="button"
-          aria-label="Toggle navigation"
+  <header class="app-nav" :class="{ 'app-nav--solid': scrolled }">
+    <div class="app-nav__inner layout-container">
+      <!-- 品牌：文案走 i18n（zh 出门啦 / en·ja Chumenla），避免英文界面里混着中文品牌名 -->
+      <button class="app-nav__brand" type="button" @click="emit('brand-click')">
+        <span class="app-nav__logo" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21.5 3.5 2.8 10.7c-.9.34-.83 1.63.1 1.87l7.1 1.84 1.84 7.1c.24.93 1.53 1 1.87.1L21.5 3.5Z" />
+            <path d="m10 13.5 5-5" />
+          </svg>
+        </span>
+        <span class="app-nav__name">{{ t('app.brand') }}</span>
+      </button>
+
+      <nav class="app-nav__actions">
+        <!-- 已登录：用户菜单 -->
+        <n-dropdown
+          v-if="auth.isSignedIn"
+          trigger="click"
+          placement="bottom-end"
+          :options="userMenuOptions"
+          @select="handleUserMenuSelect"
         >
-          <span class="navbar-toggler-bar"></span>
-          <span class="navbar-toggler-bar"></span>
-          <span class="navbar-toggler-bar"></span>
+          <button class="nav-pill" type="button">
+            <span class="nav-pill__dot" aria-hidden="true"></span>
+            <span class="nav-pill__text">{{ auth.displayName || t('auth.signedIn') }}</span>
+            <svg class="nav-pill__caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="m6 9 6 6 6-6" />
+            </svg>
+          </button>
+        </n-dropdown>
+
+        <!-- 未登录：登录入口 -->
+        <button v-else class="nav-pill" type="button" @click="emit('auth-click')">
+          <span class="nav-pill__text">{{ t('auth.login') }}</span>
         </button>
-        <button class="navbar-brand landing-brand" type="button" @click="handleBrandClick">出门啦</button>
-      </div>
-      <div class="navbar-collapse landing-navbar-collapse" id="navbarToggler">
-        <ul class="navbar-nav ml-auto landing-nav">
-          <li class="nav-item">
-            <a
-              class="nav-link"
-              rel="tooltip"
-              title="Star on GitHub"
-              data-placement="bottom"
-              href="https://github.com/Guyungy/Roamly-AI"
-              target="_blank"
-              style="display:inline-flex;align-items:center;gap:6px;"
-            >
-              <svg height="18" width="18" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
-                <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/>
-              </svg>
-            </a>
-          </li>
-          <li class="nav-item">
-            <!-- <button class="nav-link landing-nav-btn fog-toggle" type="button" :aria-pressed="fogEnabled" @click="toggleFog">
-              {{ fogEnabled ? t('home.nav.fogOn') : t('home.nav.fogOff') }}
-            </button> -->
-          </li>
-          <li class="nav-item landing-lang-item">
-            <a-select v-model:value="locale" class="lang-select-nav" size="small" :aria-label="t('app.language.label')">
-              <a-select-option value="zh-CN">{{ t('app.language.zh') }}</a-select-option>
-              <a-select-option value="ja-JP">{{ t('app.language.ja') }}</a-select-option>
-              <a-select-option value="en-US">{{ t('app.language.en') }}</a-select-option>
-            </a-select>
-          </li>
-          <li class="nav-item">
-            <button type="button" class="btn btn-danger btn-round landing-cta" @click="handleCtaClick">
-              {{ t('home.nav.cta') }}
-            </button>
-          </li>
-        </ul>
-      </div>
+
+        <n-select
+          v-model:value="locale"
+          class="nav-lang"
+          size="small"
+          :options="localeOptions"
+          :consistent-menu-width="false"
+          :aria-label="t('app.language.label')"
+        />
+
+        <n-button class="nav-cta" type="primary" size="small" @click="handleCtaClick">
+          {{ t('home.nav.cta') }}
+        </n-button>
+      </nav>
     </div>
-  </nav>
+  </header>
 </template>
 
 <script setup lang="ts">
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { NButton, NDropdown, NSelect, type DropdownOption } from 'naive-ui'
+import { useAuthStore } from '@/stores/auth'
 
 const { t, locale } = useI18n()
+const auth = useAuthStore()
 
 const emit = defineEmits<{
   (e: 'brand-click'): void
   (e: 'cta-click'): void
+  (e: 'auth-click'): void
+  (e: 'sign-out'): void
 }>()
 
-const handleBrandClick = () => {
-  emit('brand-click')
+const handleCtaClick = () => emit('cta-click')
+
+const localeOptions = computed(() => [
+  { label: t('app.language.zh'), value: 'zh-CN' },
+  { label: t('app.language.ja'), value: 'ja-JP' },
+  { label: t('app.language.en'), value: 'en-US' },
+])
+
+const userMenuOptions = computed<DropdownOption[]>(() => [
+  { key: 'email', label: auth.user?.email ?? '', disabled: true },
+  { type: 'divider', key: 'divider' },
+  { key: 'sign-out', label: t('auth.signOut') },
+])
+
+const handleUserMenuSelect = (key: string) => {
+  if (key === 'sign-out') emit('sign-out')
 }
 
-const handleCtaClick = () => {
-  emit('cta-click')
+/**
+ * 滚动后给导航加实底与描边。
+ * 之前是「永远透明」，压在内容上时字与图会糊在一起；
+ * 现在滚过 8px 就落到白底，保证任何位置都读得清。
+ */
+const scrolled = ref(false)
+const handleScroll = () => {
+  scrolled.value = window.scrollY > 8
 }
+
+onMounted(() => {
+  handleScroll()
+  window.addEventListener('scroll', handleScroll, { passive: true })
+})
+onBeforeUnmount(() => window.removeEventListener('scroll', handleScroll))
 </script>
 
 <style scoped>
-.landing-navbar {
-  position: fixed !important;
-  top: 0 !important;
-  left: 0 !important;
-  right: 0 !important;
-  width: 100% !important;
-  z-index: 1030 !important;
-  min-height: 70px;
-  padding: 0 !important;
-  background: transparent !important;
-  background-color: transparent !important;
-  background-image: none !important;
-  box-shadow: none !important;
-  border: none !important;
-  border-bottom: 1px solid transparent !important;
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
-  transition: background 0.3s;
+.app-nav {
+  position: fixed;
+  inset: 0 0 auto;
+  z-index: var(--z-sticky);
+  height: var(--nav-h);
+  background: rgba(255, 255, 255, 0.78);
+  backdrop-filter: saturate(180%) blur(14px);
+  -webkit-backdrop-filter: saturate(180%) blur(14px);
+  border-bottom: 1px solid transparent;
+  transition: background var(--dur-base) var(--ease-out), border-color var(--dur-base) var(--ease-out),
+    box-shadow var(--dur-base) var(--ease-out);
 }
 
-.landing-navbar:not(.navbar-transparent) {
-  background: transparent !important;
-  background-color: transparent !important;
-  background-image: none !important;
-  border-color: transparent !important;
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
+.app-nav--solid {
+  background: rgba(255, 255, 255, 0.92);
+  border-bottom-color: var(--c-border);
+  box-shadow: var(--sh-xs);
 }
 
-.landing-navbar.navbar-transparent {
-  padding-top: 0 !important;
-  background: transparent !important;
-  background-color: transparent !important;
-  background-image: none !important;
-  box-shadow: none !important;
+.app-nav__inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-4);
+  height: 100%;
 }
 
-.landing-navbar *,
-.landing-navbar::before,
-.landing-navbar::after {
-  box-sizing: border-box;
-}
-
-.landing-navbar .container {
-  width: 100% !important;
-  max-width: 100vw !important;
-  min-height: 70px;
-  display: flex !important;
-  align-items: center !important;
-  justify-content: space-between !important;
-  padding-left: 20px;
-  padding-right: 20px;
-  box-sizing: border-box !important;
-}
-
-.landing-navbar .navbar-translate {
-  display: flex !important;
-  align-items: center !important;
-  min-height: 70px;
+/* ---------------- 品牌 ---------------- */
+.app-nav__brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
   flex: 0 0 auto;
+  min-width: 0;
+  color: var(--c-ink-900);
+  transition: opacity var(--dur-fast) var(--ease-out);
 }
 
-.landing-navbar .navbar-brand {
-  margin: 0 !important;
-  padding: 0 !important;
-  line-height: 1 !important;
+.app-nav__brand:hover {
+  opacity: 0.78;
 }
 
-.landing-burger {
-  display: none !important;
+.app-nav__logo {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  flex: 0 0 auto;
+  border-radius: 9px;
+  color: #fff;
+  background: linear-gradient(135deg, var(--c-brand-400), var(--c-brand-600));
+  box-shadow: 0 2px 8px rgba(232, 85, 32, 0.28);
 }
 
-.landing-brand {
-  background: transparent !important;
-  border: 0;
-  color: #f4f8fc !important;
-  font-weight: 700 !important;
-  letter-spacing: 0.12em !important;
-  text-transform: uppercase;
-  font-size: 13px !important;
-  cursor: pointer;
-  min-height: 34px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
+.app-nav__logo svg {
+  width: 16px;
+  height: 16px;
 }
 
-.landing-navbar-collapse {
-  display: flex !important;
-  justify-content: flex-end;
-  align-items: center;
-  flex: 1;
-  position: static !important;
-  transform: none !important;
-  width: auto !important;
-  height: auto !important;
-  background: transparent !important;
-  border: 0 !important;
-  padding: 0 !important;
-  overflow: visible !important;
+.app-nav__name {
+  font-size: var(--fs-md);
+  font-weight: var(--fw-semibold);
+  letter-spacing: 0.01em;
+  white-space: nowrap;
 }
 
-.landing-navbar-collapse::before,
-.landing-navbar-collapse::after {
-  display: none !important;
-  content: none !important;
-  background: transparent !important;
-}
-
-.landing-nav {
+/* ---------------- 右侧动作区 ---------------- */
+.app-nav__actions {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin: 0 0 0 auto !important;
-  padding: 0;
-  list-style: none;
+  gap: 10px;
+  min-width: 0;
 }
 
-.landing-nav .nav-item {
-  margin: 0;
-  padding: 0;
+.nav-pill {
   display: inline-flex;
   align-items: center;
+  gap: 7px;
+  height: 34px;
+  padding: 0 13px;
+  max-width: 172px;
+  border-radius: var(--r-full);
+  border: 1px solid var(--c-border);
+  background: #fff;
+  color: var(--c-ink-700);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-medium);
+  white-space: nowrap;
+  transition: border-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out),
+    box-shadow var(--dur-fast) var(--ease-out);
 }
 
-.landing-nav .nav-item .nav-link {
-  margin: 0 !important;
-  padding: 0 !important;
-  line-height: 1 !important;
-  opacity: 1 !important;
+.nav-pill:hover {
+  border-color: var(--c-brand-300);
+  color: var(--c-brand-700);
+  box-shadow: var(--sh-xs);
 }
 
-.landing-nav-btn {
-  border: 1.2px solid rgba(236, 243, 250, 0.24);
-  background: rgba(12, 23, 32, 0.56);
-  color: #ecf3fa;
-  border-radius: 999px;
-  padding: 0 12px;
-  min-height: 34px;
-  font-size: 12px;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  text-transform: uppercase;
+.nav-pill__dot {
+  width: 7px;
+  height: 7px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: #22c55e;
+  box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.16);
 }
 
-.fog-toggle[aria-pressed='true'] {
-  border-color: rgba(215, 110, 66, 0.55);
-  background: rgba(215, 110, 66, 0.2);
-  color: #ffe3d6;
+.nav-pill__text {
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.landing-lang-item {
-  display: flex;
-  align-items: center;
+.nav-pill__caret {
+  width: 12px;
+  height: 12px;
+  flex: 0 0 auto;
+  color: var(--c-ink-400);
 }
 
-.lang-select-nav {
-  width: 110px;
+.nav-lang {
+  width: 104px;
 }
 
-.lang-select-nav :deep(.ant-select-selector) {
-  height: 34px !important;
-  padding: 0 12px !important;
-  border: 1.2px solid rgba(236, 243, 250, 0.24) !important;
-  background: rgba(12, 23, 32, 0.56) !important;
-  border-radius: 999px !important;
-  display: flex !important;
-  align-items: center !important;
+/* Naive 的圆角走 CSS 变量，在根元素上改就能被内部元素继承（比逐个 :deep 覆盖稳） */
+.nav-lang :deep(.n-base-selection) {
+  --n-border-radius: var(--r-full) !important;
 }
 
-.lang-select-nav :deep(.ant-select-selection-item) {
-  line-height: 32px !important;
-  font-size: 12px !important;
+.nav-cta {
+  --n-border-radius: var(--r-full) !important;
+  font-weight: var(--fw-medium);
+  padding: 0 16px;
 }
 
-.lang-select-nav :deep(.ant-select-selection-item),
-.lang-select-nav :deep(.ant-select-arrow) {
-  color: #ecf3fa !important;
-}
-
-.landing-cta {
-  min-height: 32px;
-  padding: 0 14px !important;
-  font-size: 12px !important;
-  border: none !important;
-  letter-spacing: 0.06em;
-  display: inline-flex !important;
-  align-items: center;
-  justify-content: center;
-  margin: 0 !important;
-}
-
-.landing-navbar .btn {
-  margin: 0 !important;
-}
-
-@media (max-width: 991px) {
-  .landing-navbar {
-    min-height: 64px;
+/* ---------------- 窄屏收口 ---------------- */
+@media (max-width: 640px) {
+  .app-nav__inner {
+    gap: var(--sp-2);
   }
 
-  .landing-navbar .container {
-    padding-left: 14px;
-    padding-right: 14px;
-    min-height: 64px;
+  .app-nav__actions {
+    gap: var(--sp-2);
   }
 
-  .landing-navbar .navbar-translate {
-    min-height: 64px;
+  .nav-lang {
+    width: 88px;
   }
 
-  .lang-select-nav {
-    width: 92px;
-  }
-
-  .landing-cta {
-    min-height: 34px;
-    padding: 0 10px !important;
-  }
-
-  .landing-nav {
-    gap: 6px;
+  .nav-pill {
+    max-width: 108px;
+    padding: 0 10px;
   }
 }
 
-@media (max-width: 520px) {
-  .landing-navbar .container {
-    padding-left: 8px;
-    padding-right: 8px;
+@media (max-width: 430px) {
+  .app-nav__name {
+    display: none; /* 只留 logo，给右侧动作让位 */
   }
 
-  .landing-brand {
-    font-size: 10px !important;
-    letter-spacing: 0.05em !important;
-    max-width: 70px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+  .nav-lang {
+    width: 80px;
   }
 
-  .landing-nav {
-    gap: 3px !important;
-  }
-
-  .lang-select-nav {
-    width: 68px !important;
-  }
-
-  .lang-select-nav :deep(.ant-select-selector) {
-    padding: 0 4px !important;
-  }
-
-  .landing-cta {
-    padding: 0 8px !important;
-    font-size: 10px !important;
-    min-height: 30px !important;
-    margin-right: 0 !important;
-  }
-}
-
-@media (max-width: 400px) {
-  .landing-nav .nav-item:first-child {
-    display: none !important;
-  }
-
-  .lang-select-nav {
-    width: 62px !important;
+  .nav-cta {
+    padding: 0 12px;
+    font-size: var(--fs-xs);
   }
 }
 </style>

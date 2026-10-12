@@ -1,24 +1,71 @@
 <template>
-  <div id="app">
-    <a-layout style="min-height: 100vh">
-      <a-layout-content style="padding: 0">
-        <router-view />
-      </a-layout-content>
-    </a-layout>
-  </div>
+  <n-config-provider
+    :theme-overrides="themeOverrides"
+    :locale="naiveLocale"
+    :date-locale="naiveDateLocale"
+  >
+    <n-message-provider :max="3" placement="top">
+      <n-dialog-provider>
+        <AppRoot />
+      </n-dialog-provider>
+    </n-message-provider>
+  </n-config-provider>
 </template>
 
 <script setup lang="ts">
+/**
+ * 应用外壳
+ * ------------------------------------------------------------------
+ * 只负责两件事：
+ *   1. 把 Naive UI 的主题、语言、日期语言注入下去
+ *   2. 建立 message / dialog 的 provider 树
+ *
+ * 注意：这里刻意不再全局注册组件库（app.use(Antd) 那种全量引入）。
+ * Naive UI 组件在各文件里按需 import，构建产物只含真正用到的部分。
+ */
 import { computed, watch } from 'vue'
-import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
+import {
+  NConfigProvider,
+  NDialogProvider,
+  NMessageProvider,
+  dateEnUS,
+  dateJaJP,
+  dateZhCN,
+  enUS,
+  jaJP,
+  zhCN,
+} from 'naive-ui'
 import { setAppLocale, type AppLocale } from '@/i18n'
+import { themeOverrides } from '@/theme/naive'
+import AppRoot from '@/components/AppRoot.vue'
 
 const { t, locale } = useI18n()
-const route = useRoute()
-const year = new Date().getFullYear()
-const isLandingRoute = computed(() => route.name === 'Landing')
 
+/** 让组件库自带的文案（日期面板、空状态等）跟随站点语言 */
+const naiveLocale = computed(() => {
+  switch (locale.value as AppLocale) {
+    case 'en-US':
+      return enUS
+    case 'ja-JP':
+      return jaJP
+    default:
+      return zhCN
+  }
+})
+
+const naiveDateLocale = computed(() => {
+  switch (locale.value as AppLocale) {
+    case 'en-US':
+      return dateEnUS
+    case 'ja-JP':
+      return dateJaJP
+    default:
+      return dateZhCN
+  }
+})
+
+// 语言切换后持久化，并同步浏览器标签标题
 watch(
   locale,
   (nextLocale) => {
@@ -28,198 +75,3 @@ watch(
   { immediate: true }
 )
 </script>
-
-<style>
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap');
-
-* {
-  box-sizing: border-box;
-}
-
-#app {
-  font-family: 'Outfit', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial,
-    'Noto Sans', sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
-
-.app-header {
-  background: linear-gradient(135deg, #0a0a0f 0%, #15132b 40%, #1a1035 100%) !important;
-  padding: 0 48px !important;
-  height: 72px !important;
-  line-height: 72px !important;
-  border-bottom: 1px solid rgba(255, 179, 71, 0.15);
-  position: sticky;
-  top: 0;
-  z-index: 100;
-  backdrop-filter: blur(20px);
-}
-
-.header-inner {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  height: 100%;
-  max-width: 1400px;
-  margin: 0 auto;
-}
-
-.header-brand {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  cursor: pointer;
-  transition: transform 0.3s ease;
-}
-
-.header-brand:hover {
-  transform: scale(1.03);
-}
-
-.brand-logo {
-  position: relative;
-  width: 44px;
-  height: 44px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.logo-icon {
-  font-size: 28px;
-  z-index: 1;
-  filter: drop-shadow(0 0 8px rgba(255, 179, 71, 0.5));
-}
-
-.logo-ring {
-  position: absolute;
-  inset: 0;
-  border-radius: 50%;
-  border: 2px solid rgba(255, 179, 71, 0.4);
-  animation: ringPulse 3s ease-in-out infinite;
-}
-
-@keyframes ringPulse {
-  0%, 100% { transform: scale(1); opacity: 0.4; }
-  50% { transform: scale(1.15); opacity: 0.8; }
-}
-
-.brand-text-group {
-  display: flex;
-  flex-direction: column;
-  line-height: 1.2;
-}
-
-.brand-text {
-  color: #FFD699;
-  font-size: 22px;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-}
-
-.brand-sub {
-  color: rgba(255, 255, 255, 0.35);
-  font-size: 11px;
-  font-weight: 400;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-}
-
-.header-right {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-}
-
-.lang-select {
-  width: 120px;
-}
-
-.lang-select .ant-select-selector {
-  background: rgba(255, 255, 255, 0.06) !important;
-  border: 1px solid rgba(255, 179, 71, 0.2) !important;
-  border-radius: 20px !important;
-  color: #FFD699 !important;
-}
-
-.lang-select .ant-select-selection-item {
-  color: #FFD699 !important;
-  font-size: 12px;
-}
-
-.lang-select .ant-select-arrow {
-  color: rgba(255, 214, 153, 0.7) !important;
-}
-
-.header-badge {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  background: rgba(255, 179, 71, 0.1);
-  border: 1px solid rgba(255, 179, 71, 0.2);
-  color: #FFD699;
-  font-size: 13px;
-  font-weight: 500;
-  padding: 6px 18px;
-  border-radius: 24px;
-  letter-spacing: 0.05em;
-  line-height: 1.2;
-}
-
-.badge-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: #4ade80;
-  box-shadow: 0 0 8px rgba(74, 222, 128, 0.6);
-  animation: dotBlink 2s ease-in-out infinite;
-}
-
-@keyframes dotBlink {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.4; }
-}
-
-.app-footer {
-  background: linear-gradient(135deg, #0a0a0f 0%, #15132b 40%, #1a1035 100%) !important;
-  padding: 24px 48px !important;
-  border-top: 1px solid rgba(255, 179, 71, 0.1);
-}
-
-.footer-inner {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  max-width: 1400px;
-  margin: 0 auto;
-}
-
-.footer-left {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-}
-
-.footer-brand {
-  color: #FFD699;
-  font-size: 15px;
-  font-weight: 600;
-}
-
-.footer-copy {
-  color: rgba(255, 255, 255, 0.3);
-  font-size: 12px;
-}
-
-.footer-right {
-  display: flex;
-  align-items: center;
-}
-
-.footer-tech {
-  color: rgba(255, 255, 255, 0.25);
-  font-size: 12px;
-  font-weight: 400;
-  letter-spacing: 0.03em;
-}
-</style>
