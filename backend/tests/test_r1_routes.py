@@ -129,6 +129,37 @@ def test_live_transit_units_are_correct():
 
 
 @pytest.mark.skipif(not HAS_KEY, reason="需要 TENCENT_MAP_KEY 环境变量")
+def test_live_nearby_multi_keyword_merges_metro_and_bus():
+    """契约 §1.6：逗号串不能透传给上游，必须逐个检索后合并
+
+    实测上游 keyword 是单串精确匹配：传 "地铁站,公交站" 只回公交站，
+    地铁站整类丢失。这条测试锁死合并行为。
+    """
+    r = client.get(
+        "/api/map/nearby-station",
+        params={
+            "longitude": 116.316478,
+            "latitude": 39.984055,
+            "radius": 1500,
+            "keyword": "地铁站,公交站",
+        },
+    )
+    assert r.status_code == 200
+    body = r.json()
+    assert body["degraded"] is False
+
+    types = {s["type"] for s in body["data"]}
+    assert "metro" in types, "多关键词必须带回地铁站"
+    assert "bus" in types, "多关键词必须带回公交站"
+
+    # 合并后仍按距离升序、且无重复站点
+    distances = [s["distance"] for s in body["data"]]
+    assert distances == sorted(distances)
+    ids = [s["id"] for s in body["data"] if s["id"]]
+    assert len(ids) == len(set(ids)), "合并后不应出现重复站点"
+
+
+@pytest.mark.skipif(not HAS_KEY, reason="需要 TENCENT_MAP_KEY 环境变量")
 def test_live_nearby_cache_reduces_upstream_calls():
     """同坐标 60s 内应命中缓存，保护日 PV 11000 额度"""
     params = {"longitude": 116.307490, "latitude": 39.984154, "radius": 800}

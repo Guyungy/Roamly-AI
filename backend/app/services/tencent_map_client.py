@@ -77,7 +77,11 @@ class TencentMapService:
         keyword: str = "地铁站",
         city: Optional[str] = None,
     ) -> NearbyStationResponse:
-        """附近站点检索（契约 §2）"""
+        """附近站点检索（契约 §2）
+
+        多关键词（英文逗号分隔）逐个打上游再合并：腾讯 place/v1/search 的 keyword
+        是单串精确匹配，实测传 "地铁站,公交站" 只回公交站、地铁站整类丢失。
+        """
         if not self.configured:
             return adapter.degraded_nearby(
                 "腾讯位置服务 Key 未配置，请在 .env 设置 TENCENT_MAP_KEY"
@@ -89,33 +93,52 @@ class TencentMapService:
             return cached[1]
 
         center = Location(longitude=longitude, latitude=latitude)
+        keywords = [k.strip() for k in keyword.split(",") if k.strip()] or ["地铁站"]
+
+        merged: Dict[str, Any] = {}
+        for kw in keywords:
+            try:
+                part = await self._search_stations(kw, center, radius, city)
+            except (httpx.HTTPError, ValueError) as e:
+                return adapter.degraded_nearby(f"腾讯位置服务请求失败，已降级: {e}")
+            except adapter.TencentError as e:
+                if e.is_bad_param:
+                    raise
+                return adapter.degraded_nearby(
+                    f"腾讯位置服务返回错误，已降级: {e.message}"
+                )
+            # 按上游 POI id 去重：同一站点可能被多个关键词同时命中
+            for station in part.data:
+                merged.setdefault(station.id or f"{station.name}@{station.distance}", station)
+
+        result = NearbyStationResponse(
+            success=True,
+            degraded=False,
+            message="",
+            data=sorted(merged.values(), key=lambda s: s.distance),
+        )
+        _nearby_cache[cache_key] = (time.monotonic(), result)
+        return result
+
+    async def _search_stations(
+        self,
+        keyword: str,
+        center: Location,
+        radius: int,
+        city: Optional[str],
+    ) -> NearbyStationResponse:
+        """单关键词检索，返回已解析的站点列表"""
         params: Dict[str, Any] = {
             "keyword": keyword,
             "boundary": f"nearby({adapter.to_coord(center)},{radius},0)",
             "page_size": adapter.PLACE_PAGE_SIZE_MAX,
             "orderby": "_distance",
         }
-        if city:
-            params["boundary"] = (
-                f"region({city},0)"
-                if radius <= 0
-                else params["boundary"]
-            )
+        if city and radius <= 0:
+            params["boundary"] = f"region({city},0)"
 
-        try:
-            payload = await self._get("/place/v1/search", params)
-        except (httpx.HTTPError, ValueError) as e:
-            return adapter.degraded_nearby(f"腾讯位置服务请求失败，已降级: {e}")
-
-        try:
-            result = adapter.parse_nearby_stations(payload)
-        except adapter.TencentError as e:
-            if e.is_bad_param:
-                raise
-            return adapter.degraded_nearby(f"腾讯位置服务返回错误，已降级: {e.message}")
-
-        _nearby_cache[cache_key] = (time.monotonic(), result)
-        return result
+        payload = await self._get("/place/v1/search", params)
+        return adapter.parse_nearby_stations(payload)
 
     async def transit(
         self,

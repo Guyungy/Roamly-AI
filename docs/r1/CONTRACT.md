@@ -67,6 +67,21 @@ X-Limit: current_qps=1; limit_qps=10; current_pv=3; limit_pv=11000
 - `place/v1/search` 的 `page_size` 上限 **20**，传 21 仍返回 20，传 50 报 `113 此功能未被授权`。
 - 单次检索最多返回 20 条；需要更多时必须翻页（`page_index`）。
 
+### 1.6 多关键词（本次实测发现）
+
+`keyword` 是**单串精确匹配**，不是"或"关系。以中关村坐标（116.316478, 39.984055）实测：
+
+| 传入 keyword | 返回 | 类型分布 |
+|---|---|---|
+| `地铁站,公交站` | 6 条 | **bus ×6**，地铁站全部丢失 |
+| `地铁站 公交站`（空格） | 6 条 | bus ×6，同上 |
+| `地铁站\|公交站` | 6 条 | bus ×6，同上 |
+| `地铁站` | 6 条 | metro ×6 |
+| `公交站` | 20 条 | bus ×20 |
+
+结论：**多关键词必须由服务端逐个检索再合并去重**，不能把逗号串直接透传给上游。
+`tencent_map_client.nearby_station` 已按此实现（按上游 POI id 去重，按距离升序合并）。
+
 ---
 
 ## 2. 附近站点 `GET /api/map/nearby-station`
@@ -77,7 +92,7 @@ X-Limit: current_qps=1; limit_qps=10; current_pv=3; limit_pv=11000
 | `longitude` | float | 是 | 检索中心经度（GCJ-02） |
 | `latitude` | float | 是 | 检索中心纬度（GCJ-02） |
 | `radius` | int | 否 | 米，默认 1000，上限 5000 |
-| `keyword` | str | 否 | 默认 `地铁站`；多关键词用英文逗号 |
+| `keyword` | str | 否 | 默认 `地铁站`；多关键词用英文逗号，**服务端逐个检索后合并去重** |
 | `city` | str | 否 | 提升精度 |
 
 > 请求参数用 **两个 float**，不用 `coord="lng,lat"` 单串——避免与腾讯的 `"lat,lng"` 顺序混淆，这是 POLL-158 的实测踩坑点。
