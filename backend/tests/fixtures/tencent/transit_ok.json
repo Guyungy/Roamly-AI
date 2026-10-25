@@ -1,0 +1,964 @@
+{
+  "status": 0,
+  "message": "Success",
+  "result": {
+    "routes": [
+      {
+        "distance": 17835,
+        "duration": 80,
+        "duration_1m": 77,
+        "price": 500,
+        "bounds": "39.907146,116.307890,39.985168,116.403375",
+        "steps": [
+          {
+            "mode": "WALKING",
+            "distance": 948,
+            "duration": 14,
+            "direction": "东",
+            "steps": [
+              {
+                "instruction": "从起点朝北行进37米右转",
+                "polyline_idx": [
+                  0,
+                  3
+                ],
+                "road_name": "",
+                "dir_desc": "北",
+                "distance": 37,
+                "act_desc": "右转"
+              },
+              {
+                "instruction": "行进14米直行进入人行横道",
+                "polyline_idx": [
+                  4,
+                  11
+                ],
+                "road_name": "",
+                "dir_desc": "东",
+                "distance": 14,
+                "act_desc": "直行"
+              },
+              {
+                "instruction": "经人行横道行进16米左转进入彩和坊路",
+                "polyline_idx": [
+                  12,
+                  15
+                ],
+                "road_name": "人行横道",
+                "dir_desc": "东",
+                "distance": 16,
+                "act_desc": "左转"
+              },
+              {
+                "instruction": "沿彩和坊路行进63米右转进入北四环西路辅路",
+                "polyline_idx": [
+                  16,
+                  31
+                ],
+                "road_name": "彩和坊路",
+                "dir_desc": "北",
+                "distance": 63,
+                "act_desc": "右转"
+              },
+              {
+                "instruction": "沿北四环西路辅路行进188米直行进入北四环西路辅路",
+                "polyline_idx": [
+                  32,
+                  87
+                ],
+                "road_name": "北四环西路辅路",
+                "dir_desc": "东",
+                "distance": 188,
+                "act_desc": "直行"
+              },
+              {
+                "instruction": "行进350米右转",
+                "polyline_idx": [
+                  88,
+                  179
+                ],
+                "road_name": "北四环西路辅路",
+                "dir_desc": "东",
+                "distance": 350,
+                "act_desc": "右转"
+              },
+              {
+                "instruction": "行进13米左转",
+                "polyline_idx": [
+                  180,
+                  183
+                ],
+                "road_name": "",
+                "dir_desc": "南",
+                "distance": 13,
+                "act_desc": "左转"
+              },
+              {
+                "instruction": "行进96米右转",
+                "polyline_idx": [
+                  184,
+                  187
+                ],
+                "road_name": "",
+                "dir_desc": "东",
+                "distance": 96,
+                "act_desc": "右转"
+              },
+              {
+                "instruction": "行进166米到达终点",
+                "polyline_idx": [
+                  188,
+                  203
+                ],
+                "road_name": "",
+                "dir_desc": "南",
+                "distance": 166,
+                "act_desc": ""
+              }
+            ]
+          },
+          {
+            "mode": "TRANSIT",
+            "lines": [
+              {
+                "vehicle": "SUBWAY",
+                "id": "18401650154625232102",
+                "title": "地铁4号线大兴线",
+                "station_count": 11,
+                "running_status": 300,
+                "price": -1,
+                "destination": {
+                  "id": "17220377657305847663",
+                  "title": "天宫院"
+                },
+                "start_time": "04:58",
+                "end_time": "22:35",
+                "distance": 12883,
+                "duration": 27,
+                "geton": {
+                  "id": "4998120962326091051",
+                  "title": "中关村",
+                  "location": {
+                    "lat": 39.984051,
+                    "lng": 116.316477
+                  },
+                  "exit": {
+                    "id": "14418744694453853706",
+                    "title": "A1西北口"
+                  }
+                },
+                "getoff": {
+                  "id": "16823596143653518175",
+                  "title": "西单",
+                  "location": {
+                    "lat": 39.907144,
+                    "lng": 116.374364
+                  }
+                },
+                "stations": [
+                  {
+                    "id": "7656151716723177516",
+                    "title": "海淀黄庄",
+                    "location": {
+                      "lat": 39.975949,
+                      "lng": 116.317608
+                    }
+                  },
+                  {
+                    "id": "7886275322509620832",
+                    "title": "人民大学",
+                    "location": {
+                      "lat": 39.966945,
+                      "lng": 116.32139
+                    }
+                  },
+                  {
+                    "id": "6285214725678786819",
+                    "title": "魏公村",
+                    "location": {
+                      "lat": 39.957897,
+                      "lng": 116.323223
+                    }
+                  },
+                  {
+                    "id": "12957340301126278895",
+                    "title": "国家图书馆",
+                    "location": {
+                      "lat": 39.94325,
+                      "lng": 116.3251
+                    }
+                  },
+                  {
+                    "id": "4867530117427136178",
+                    "title": "动物园",
+                    "location": {
+                      "lat": 39.938277,
+                      "lng": 116.339024
+                    }
+                  },
+                  {
+                    "id": "15888645934469989496",
+                    "title": "西直门",
+                    "location": {
+                      "lat": 39.940474,
+                      "lng": 116.355454
+                    }
+                  },
+                  {
+                    "id": "781398822221804034",
+                    "title": "新街口",
+                    "location": {
+                      "lat": 39.940667,
+                      "lng": 116.367779
+                    }
+                  },
+                  {
+                    "id": "16209799135989750579",
+                    "title": "平安里",
+                    "location": {
+                      "lat": 39.933903,
+                      "lng": 116.372882
+                    }
+                  },
+                  {
+                    "id": "12069804166915490352",
+                    "title": "西四",
+                    "location": {
+                      "lat": 39.924183,
+                      "lng": 116.37334
+                    }
+                  },
+                  {
+                    "id": "10494323790134833587",
+                    "title": "灵境胡同",
+                    "location": {
+                      "lat": 39.915964,
+                      "lng": 116.373753
+                    }
+                  },
+                  {
+                    "id": "16823596143653518175",
+                    "title": "西单",
+                    "location": {
+                      "lat": 39.907144,
+                      "lng": 116.374364
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "mode": "WALKING",
+            "distance": 353,
+            "duration": 6,
+            "direction": "东"
+          },
+          {
+            "mode": "TRANSIT",
+            "lines": [
+              {
+                "vehicle": "SUBWAY",
+                "id": "6249387628266028040",
+                "title": "地铁1号线八通线",
+                "station_count": 2,
+                "running_status": 300,
+                "price": -1,
+                "destination": {
+                  "id": "2199030762896",
+                  "title": "环球度假区"
+                },
+                "start_time": "05:09",
+                "end_time": "22:47",
+                "distance": 2140,
+                "duration": 7,
+                "geton": {
+                  "id": "8199303067094847806",
+                  "title": "西单",
+                  "location": {
+                    "lat": 39.907193,
+                    "lng": 116.376304
+                  }
+                },
+                "getoff": {
+                  "id": "1510902534697162166",
+                  "title": "天安门东",
+                  "location": {
+                    "lat": 39.907772,
+                    "lng": 116.401278
+                  },
+                  "exit": {
+                    "id": "3860414518700988537",
+                    "title": "B东北口"
+                  }
+                },
+                "stations": [
+                  {
+                    "id": "3549342306193944986",
+                    "title": "天安门西",
+                    "location": {
+                      "lat": 39.907482,
+                      "lng": 116.391414
+                    }
+                  },
+                  {
+                    "id": "1510902534697162166",
+                    "title": "天安门东",
+                    "location": {
+                      "lat": 39.907772,
+                      "lng": 116.401278
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "mode": "WALKING",
+            "distance": 1511,
+            "duration": 23,
+            "direction": "西",
+            "steps": [
+              {
+                "instruction": "从起点朝东行进138米左转",
+                "polyline_idx": [
+                  0,
+                  13
+                ],
+                "road_name": "",
+                "dir_desc": "东",
+                "distance": 138,
+                "act_desc": "左转"
+              },
+              {
+                "instruction": "行进86米左转进入南池子大街",
+                "polyline_idx": [
+                  14,
+                  21
+                ],
+                "road_name": "",
+                "dir_desc": "东",
+                "distance": 86,
+                "act_desc": "左转"
+              },
+              {
+                "instruction": "沿南池子大街行进393米左转",
+                "polyline_idx": [
+                  22,
+                  65
+                ],
+                "road_name": "南池子大街",
+                "dir_desc": "北",
+                "distance": 393,
+                "act_desc": "左转"
+              },
+              {
+                "instruction": "行进121米左转",
+                "polyline_idx": [
+                  66,
+                  85
+                ],
+                "road_name": "",
+                "dir_desc": "西",
+                "distance": 121,
+                "act_desc": "左转"
+              },
+              {
+                "instruction": "行进168米右转",
+                "polyline_idx": [
+                  86,
+                  93
+                ],
+                "road_name": "",
+                "dir_desc": "南",
+                "distance": 168,
+                "act_desc": "右转"
+              },
+              {
+                "instruction": "行进224米右转",
+                "polyline_idx": [
+                  94,
+                  117
+                ],
+                "road_name": "",
+                "dir_desc": "西",
+                "distance": 224,
+                "act_desc": "右转"
+              },
+              {
+                "instruction": "行进61米左转",
+                "polyline_idx": [
+                  118,
+                  125
+                ],
+                "road_name": "",
+                "dir_desc": "北",
+                "distance": 61,
+                "act_desc": "左转"
+              },
+              {
+                "instruction": "行进18米偏右转",
+                "polyline_idx": [
+                  126,
+                  131
+                ],
+                "road_name": "",
+                "dir_desc": "西",
+                "distance": 18,
+                "act_desc": "偏右转"
+              },
+              {
+                "instruction": "行进13米左后转",
+                "polyline_idx": [
+                  132,
+                  141
+                ],
+                "road_name": "",
+                "dir_desc": "西北",
+                "distance": 13,
+                "act_desc": "左后转"
+              },
+              {
+                "instruction": "行进55米右转",
+                "polyline_idx": [
+                  142,
+                  149
+                ],
+                "road_name": "",
+                "dir_desc": "南",
+                "distance": 55,
+                "act_desc": "右转"
+              },
+              {
+                "instruction": "行进31米左转",
+                "polyline_idx": [
+                  150,
+                  159
+                ],
+                "road_name": "",
+                "dir_desc": "西",
+                "distance": 31,
+                "act_desc": "左转"
+              },
+              {
+                "instruction": "行进28米右转",
+                "polyline_idx": [
+                  160,
+                  165
+                ],
+                "road_name": "",
+                "dir_desc": "北",
+                "distance": 28,
+                "act_desc": "右转"
+              },
+              {
+                "instruction": "行进17米左转",
+                "polyline_idx": [
+                  166,
+                  173
+                ],
+                "road_name": "",
+                "dir_desc": "西",
+                "distance": 17,
+                "act_desc": "左转"
+              },
+              {
+                "instruction": "行进74米右转",
+                "polyline_idx": [
+                  174,
+                  187
+                ],
+                "road_name": "",
+                "dir_desc": "北",
+                "distance": 74,
+                "act_desc": "右转"
+              },
+              {
+                "instruction": "行进27米左转",
+                "polyline_idx": [
+                  188,
+                  191
+                ],
+                "road_name": "",
+                "dir_desc": "西",
+                "distance": 27,
+                "act_desc": "左转"
+              },
+              {
+                "instruction": "行进50米到达终点",
+                "polyline_idx": [
+                  192,
+                  199
+                ],
+                "road_name": "",
+                "dir_desc": "南",
+                "distance": 50,
+                "act_desc": ""
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "distance": 19077,
+        "duration": 90,
+        "duration_1m": 87,
+        "price": 700,
+        "bounds": "39.907150,116.299016,39.985253,116.403375",
+        "steps": [
+          {
+            "mode": "WALKING",
+            "distance": 865,
+            "duration": 13,
+            "direction": "西",
+            "steps": [
+              {
+                "instruction": "从起点朝北行进104米左转进入北四环西路辅路",
+                "polyline_idx": [
+                  0,
+                  21
+                ],
+                "road_name": "",
+                "dir_desc": "北",
+                "distance": 104,
+                "act_desc": "左转"
+              },
+              {
+                "instruction": "沿北四环西路辅路行进96米直行进入北四环西路辅路",
+                "polyline_idx": [
+                  22,
+                  43
+                ],
+                "road_name": "北四环西路辅路",
+                "dir_desc": "西",
+                "distance": 96,
+                "act_desc": "直行"
+              },
+              {
+                "instruction": "沿北四环西路辅路行进264米直行进入北四环西路辅路",
+                "polyline_idx": [
+                  44,
+                  89
+                ],
+                "road_name": "北四环西路辅路",
+                "dir_desc": "西",
+                "distance": 264,
+                "act_desc": "直行"
+              },
+              {
+                "instruction": "沿北四环西路辅路行进74米右转",
+                "polyline_idx": [
+                  90,
+                  99
+                ],
+                "road_name": "北四环西路辅路",
+                "dir_desc": "西",
+                "distance": 74,
+                "act_desc": "右转"
+              },
+              {
+                "instruction": "行进323米到达终点",
+                "polyline_idx": [
+                  100,
+                  113
+                ],
+                "road_name": "",
+                "dir_desc": "北",
+                "distance": 323,
+                "act_desc": ""
+              }
+            ]
+          },
+          {
+            "mode": "TRANSIT",
+            "lines": [
+              {
+                "vehicle": "SUBWAY",
+                "id": "1342652708956043041",
+                "title": "地铁16号线",
+                "station_count": 8,
+                "running_status": 300,
+                "price": 400,
+                "destination": {
+                  "id": "2199034245305",
+                  "title": "宛平城"
+                },
+                "start_time": "05:13",
+                "end_time": "22:34",
+                "distance": 10582,
+                "duration": 26,
+                "geton": {
+                  "id": "2199028595166",
+                  "title": "万泉河桥",
+                  "location": {
+                    "lat": 39.985228,
+                    "lng": 116.299022
+                  },
+                  "exit": {
+                    "id": "2199028595327",
+                    "title": "C东南口"
+                  }
+                },
+                "getoff": {
+                  "id": "2199032886839",
+                  "title": "木樨地",
+                  "location": {
+                    "lat": 39.909322,
+                    "lng": 116.333859
+                  },
+                  "exit": {
+                    "id": "2199032869005",
+                    "title": "F口"
+                  }
+                },
+                "stations": [
+                  {
+                    "id": "2199028595167",
+                    "title": "苏州街",
+                    "location": {
+                      "lat": 39.975488,
+                      "lng": 116.306299
+                    }
+                  },
+                  {
+                    "id": "2199028595168",
+                    "title": "苏州桥",
+                    "location": {
+                      "lat": 39.96207,
+                      "lng": 116.308077
+                    }
+                  },
+                  {
+                    "id": "2199028595169",
+                    "title": "万寿寺",
+                    "location": {
+                      "lat": 39.947747,
+                      "lng": 116.309847
+                    }
+                  },
+                  {
+                    "id": "2199028595170",
+                    "title": "国家图书馆",
+                    "location": {
+                      "lat": 39.941914,
+                      "lng": 116.324337
+                    }
+                  },
+                  {
+                    "id": "2199028595171",
+                    "title": "二里沟",
+                    "location": {
+                      "lat": 39.932684,
+                      "lng": 116.333598
+                    }
+                  },
+                  {
+                    "id": "2199028595172",
+                    "title": "甘家口",
+                    "location": {
+                      "lat": 39.923405,
+                      "lng": 116.33456
+                    }
+                  },
+                  {
+                    "id": "2199031508137",
+                    "title": "玉渊潭东门",
+                    "location": {
+                      "lat": 39.914111,
+                      "lng": 116.334551
+                    }
+                  },
+                  {
+                    "id": "2199032886839",
+                    "title": "木樨地",
+                    "location": {
+                      "lat": 39.909322,
+                      "lng": 116.333859
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "mode": "WALKING",
+            "distance": 651,
+            "duration": 11,
+            "direction": "东"
+          },
+          {
+            "mode": "TRANSIT",
+            "lines": [
+              {
+                "vehicle": "SUBWAY",
+                "id": "6249387628266028040",
+                "title": "地铁1号线八通线",
+                "station_count": 5,
+                "running_status": 300,
+                "price": 300,
+                "destination": {
+                  "id": "2199030762896",
+                  "title": "环球度假区"
+                },
+                "start_time": "05:09",
+                "end_time": "22:47",
+                "distance": 5468,
+                "duration": 14,
+                "geton": {
+                  "id": "16528544511021151746",
+                  "title": "木樨地",
+                  "location": {
+                    "lat": 39.907468,
+                    "lng": 116.337479
+                  },
+                  "exit": {
+                    "id": "2199026988502",
+                    "title": "A1西北口"
+                  }
+                },
+                "getoff": {
+                  "id": "1510902534697162166",
+                  "title": "天安门东",
+                  "location": {
+                    "lat": 39.907772,
+                    "lng": 116.401278
+                  },
+                  "exit": {
+                    "id": "3860414518700988537",
+                    "title": "B东北口"
+                  }
+                },
+                "stations": [
+                  {
+                    "id": "3799356052337255473",
+                    "title": "南礼士路",
+                    "location": {
+                      "lat": 39.907248,
+                      "lng": 116.352589
+                    }
+                  },
+                  {
+                    "id": "4271964675657855668",
+                    "title": "复兴门",
+                    "location": {
+                      "lat": 39.907151,
+                      "lng": 116.357754
+                    }
+                  },
+                  {
+                    "id": "8199303067094847806",
+                    "title": "西单",
+                    "location": {
+                      "lat": 39.907193,
+                      "lng": 116.376304
+                    }
+                  },
+                  {
+                    "id": "3549342306193944986",
+                    "title": "天安门西",
+                    "location": {
+                      "lat": 39.907482,
+                      "lng": 116.391414
+                    }
+                  },
+                  {
+                    "id": "1510902534697162166",
+                    "title": "天安门东",
+                    "location": {
+                      "lat": 39.907772,
+                      "lng": 116.401278
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "mode": "WALKING",
+            "distance": 1511,
+            "duration": 23,
+            "direction": "西",
+            "steps": [
+              {
+                "instruction": "从起点朝东行进138米左转",
+                "polyline_idx": [
+                  0,
+                  13
+                ],
+                "road_name": "",
+                "dir_desc": "东",
+                "distance": 138,
+                "act_desc": "左转"
+              },
+              {
+                "instruction": "行进86米左转进入南池子大街",
+                "polyline_idx": [
+                  14,
+                  21
+                ],
+                "road_name": "",
+                "dir_desc": "东",
+                "distance": 86,
+                "act_desc": "左转"
+              },
+              {
+                "instruction": "沿南池子大街行进393米左转",
+                "polyline_idx": [
+                  22,
+                  65
+                ],
+                "road_name": "南池子大街",
+                "dir_desc": "北",
+                "distance": 393,
+                "act_desc": "左转"
+              },
+              {
+                "instruction": "行进121米左转",
+                "polyline_idx": [
+                  66,
+                  85
+                ],
+                "road_name": "",
+                "dir_desc": "西",
+                "distance": 121,
+                "act_desc": "左转"
+              },
+              {
+                "instruction": "行进168米右转",
+                "polyline_idx": [
+                  86,
+                  93
+                ],
+                "road_name": "",
+                "dir_desc": "南",
+                "distance": 168,
+                "act_desc": "右转"
+              },
+              {
+                "instruction": "行进224米右转",
+                "polyline_idx": [
+                  94,
+                  117
+                ],
+                "road_name": "",
+                "dir_desc": "西",
+                "distance": 224,
+                "act_desc": "右转"
+              },
+              {
+                "instruction": "行进61米左转",
+                "polyline_idx": [
+                  118,
+                  125
+                ],
+                "road_name": "",
+                "dir_desc": "北",
+                "distance": 61,
+                "act_desc": "左转"
+              },
+              {
+                "instruction": "行进18米偏右转",
+                "polyline_idx": [
+                  126,
+                  131
+                ],
+                "road_name": "",
+                "dir_desc": "西",
+                "distance": 18,
+                "act_desc": "偏右转"
+              },
+              {
+                "instruction": "行进13米左后转",
+                "polyline_idx": [
+                  132,
+                  141
+                ],
+                "road_name": "",
+                "dir_desc": "西北",
+                "distance": 13,
+                "act_desc": "左后转"
+              },
+              {
+                "instruction": "行进55米右转",
+                "polyline_idx": [
+                  142,
+                  149
+                ],
+                "road_name": "",
+                "dir_desc": "南",
+                "distance": 55,
+                "act_desc": "右转"
+              },
+              {
+                "instruction": "行进31米左转",
+                "polyline_idx": [
+                  150,
+                  159
+                ],
+                "road_name": "",
+                "dir_desc": "西",
+                "distance": 31,
+                "act_desc": "左转"
+              },
+              {
+                "instruction": "行进28米右转",
+                "polyline_idx": [
+                  160,
+                  165
+                ],
+                "road_name": "",
+                "dir_desc": "北",
+                "distance": 28,
+                "act_desc": "右转"
+              },
+              {
+                "instruction": "行进17米左转",
+                "polyline_idx": [
+                  166,
+                  173
+                ],
+                "road_name": "",
+                "dir_desc": "西",
+                "distance": 17,
+                "act_desc": "左转"
+              },
+              {
+                "instruction": "行进74米右转",
+                "polyline_idx": [
+                  174,
+                  187
+                ],
+                "road_name": "",
+                "dir_desc": "北",
+                "distance": 74,
+                "act_desc": "右转"
+              },
+              {
+                "instruction": "行进27米左转",
+                "polyline_idx": [
+                  188,
+                  191
+                ],
+                "road_name": "",
+                "dir_desc": "西",
+                "distance": 27,
+                "act_desc": "左转"
+              },
+              {
+                "instruction": "行进50米到达终点",
+                "polyline_idx": [
+                  192,
+                  199
+                ],
+                "road_name": "",
+                "dir_desc": "南",
+                "distance": 50,
+                "act_desc": ""
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

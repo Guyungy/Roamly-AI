@@ -24,3 +24,13 @@ Thumbs.db
 
 # WeChat DevTools
 miniapp/project.private.config.json
+
+# Agent 运行产物（不应进入业务分支）
+# 实测：每条 agent 分支被这些文件贡献 15859 行新增，
+# 占 diff 的 64%，导致代码评审不可做。
+.workbuddy/
+*.bak
+*.genie
+
+# 本地验证用虚拟环境
+.venv-verify/

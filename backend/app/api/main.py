@@ -4,7 +4,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from ..config import get_settings, validate_config, print_config
-from .routes import trip, poi, map as map_routes, chat
+from .routes import trip, poi, map as map_routes, chat, r1_map
 
 
 settings = get_settings()
@@ -65,6 +65,7 @@ app.add_middleware(
 app.include_router(trip.router, prefix="/api")
 app.include_router(poi.router, prefix="/api")
 app.include_router(map_routes.router, prefix="/api")
+app.include_router(r1_map.router, prefix="/api")
 app.include_router(chat.router, prefix="/api")
 
 

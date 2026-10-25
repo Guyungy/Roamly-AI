@@ -228,6 +228,81 @@ class WeatherResponse(BaseModel):
     data: List[WeatherInfo] = Field(default=[], description="天气信息")
 
 
+# ============ R1 地图契约（唯一事实源，见 docs/r1/CONTRACT.md）============
+#
+# 本段是公交换乘 / 附近站点 / 一键导航的唯一定义。
+# 分支 poll-153 的 TransitPlan/TransitSegment、poll-158 的 NearbyStationData
+# 均已废弃，合并时删除，不得保留别名。
+
+class NearbyStation(BaseModel):
+    """附近公交/地铁站点（R1 契约 §2）"""
+    id: str = Field(default="", description="腾讯 POI ID")
+    name: str = Field(..., description="站点名称，如 '中关村[地铁站]'")
+    type: str = Field(default="other", description="站点类型: metro/bus/other")
+    address: str = Field(default="", description="上游 address 字段（腾讯放途经线路）")
+    location: Location = Field(..., description="站点坐标(GCJ02)")
+    distance: int = Field(default=0, ge=0, description="与检索点距离(整数米)")
+    lines: List[str] = Field(default=[], description="途经线路，由上游 address 切分")
+
+
+class NearbyStationResponse(BaseModel):
+    """附近站点响应（R1 契约 §2）
+
+    data 恒为数组，前端以 Array.isArray(payload.data) 判定可用性。
+    降级时 degraded=true 且 data=[]，绝不伪造站点。
+    """
+    success: bool = Field(..., description="是否成功")
+    degraded: bool = Field(default=False, description="是否降级(Key 缺失/上游失败/未授权)")
+    message: str = Field(default="", description="消息")
+    data: List[NearbyStation] = Field(default=[], description="站点列表(距离升序)")
+
+
+class TransitStep(BaseModel):
+    """换乘单段（R1 契约 §3）"""
+    mode: str = Field(..., description="段类型: WALKING/TRANSIT/RAILWAY/TAXI")
+    distance: int = Field(default=0, description="本段距离(米)")
+    duration: int = Field(default=0, description="本段耗时(秒)")
+    line: str = Field(default="", description="线路名，步行段为空")
+    from_name: str = Field(default="", description="上车站/起点名")
+    to_name: str = Field(default="", description="下车站/终点名")
+    instruction: str = Field(default="", description="步行导航文字指引")
+
+
+class TransitRoute(BaseModel):
+    """公交换乘方案（R1 契约 §3）"""
+    distance: int = Field(default=0, description="总距离(米)")
+    duration: int = Field(default=0, description="总耗时(秒)")
+    transfers: int = Field(default=0, description="换乘次数 = 乘坐段数 - 1")
+    fare: Optional[float] = Field(default=None, description="总票价(元)，无票价时 None")
+    steps: List[TransitStep] = Field(default=[], description="换乘段列表(步行与乘坐交错)")
+
+
+class TransitResponse(BaseModel):
+    """公交换乘响应（R1 契约 §3）
+
+    data 为多方案数组（上游默认返回最多 5 条）。
+    """
+    success: bool = Field(..., description="是否成功")
+    degraded: bool = Field(default=False, description="是否降级")
+    message: str = Field(default="", description="消息")
+    data: List[TransitRoute] = Field(default=[], description="换乘方案列表(按上游推荐序)")
+
+
+class NavLink(BaseModel):
+    """Web 端一键导航链接（R1 契约 §4）"""
+    mode: str = Field(..., description="导航方式: walk/drive/transit")
+    destination: str = Field(..., description="目的地")
+    provider: str = Field(default="tencent", description="地图服务商")
+    url: str = Field(..., description="Web 跳转导航链接")
+
+
+class NavLinkResponse(BaseModel):
+    """一键导航链接响应"""
+    success: bool = Field(..., description="是否成功")
+    message: str = Field(default="", description="消息")
+    data: Optional[NavLink] = Field(default=None, description="导航链接")
+
+
 # ============ 错误响应 ============
 
 class ErrorResponse(BaseModel):
