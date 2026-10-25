@@ -269,3 +269,40 @@ def build_nav_url(
         url += f"&tocoord={to_location.latitude},{to_location.longitude}"
     url += f"&referer={quote(referer)}"
     return url
+
+
+# ============ 地理编码（原 poll-160 的 geocode，收编入契约）============
+
+def parse_geocode(payload: Dict[str, Any]) -> Optional[Location]:
+    """geocoder/v1 响应 → Location
+
+    地址无法解析时上游仍返回 status=0，但 result 为空或 reliability<1，
+    此时返回 None，由调用方决定是否降级。
+    """
+    parse_status(payload)
+    result = payload.get("result") or {}
+    return to_location(result.get("location"))
+
+
+def parse_place_search(payload: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """place/v1/search 响应 → 精简 POI 列表
+
+    供上层做景点/餐饮检索。只保留契约内字段，不透传上游全量结构。
+    """
+    parse_status(payload)
+    out: List[Dict[str, Any]] = []
+    for poi in payload.get("data") or []:
+        loc = to_location(poi.get("location"))
+        if loc is None:
+            continue
+        out.append(
+            {
+                "id": str(poi.get("id") or ""),
+                "name": str(poi.get("title") or ""),
+                "address": str(poi.get("address") or ""),
+                "category": str(poi.get("category") or ""),
+                "location": loc,
+                "distance": int(round(float(poi.get("_distance") or 0))),
+            }
+        )
+    return out

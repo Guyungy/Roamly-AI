@@ -9,7 +9,7 @@
 
 import asyncio
 import time
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 import httpx
 
@@ -159,6 +159,40 @@ class TencentMapService:
                 mode, destination, to_location, referer=self.referer
             ),
         )
+
+    async def geocode(self, address: str, city: Optional[str] = None) -> Optional[Location]:
+        """地址 → 坐标（收编 poll-160 的 geocode 能力）"""
+        if not self.configured:
+            return None
+        params: Dict[str, Any] = {"address": address}
+        if city:
+            params["region"] = city
+        try:
+            payload = await self._get("/geocoder/v1/", params)
+            return adapter.parse_geocode(payload)
+        except (httpx.HTTPError, ValueError, adapter.TencentError):
+            return None
+
+    async def search_place(
+        self,
+        keyword: str,
+        city: Optional[str] = None,
+        limit: int = 20,
+    ) -> List[Dict[str, Any]]:
+        """关键词检索 POI（收编 poll-160 的 search_poi 能力）"""
+        if not self.configured:
+            return []
+        params: Dict[str, Any] = {
+            "keyword": keyword,
+            "page_size": min(limit, adapter.PLACE_PAGE_SIZE_MAX),
+        }
+        if city:
+            params["boundary"] = f"region({city},0)"
+        try:
+            payload = await self._get("/place/v1/search", params)
+            return adapter.parse_place_search(payload)
+        except (httpx.HTTPError, ValueError, adapter.TencentError):
+            return []
 
 
 _service: Optional[TencentMapService] = None
