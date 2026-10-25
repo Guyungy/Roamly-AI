@@ -312,7 +312,20 @@
       "fromDegraded": "后端已降级（上游位置服务暂不可用），未展示任何站点",
       "degradedEmpty": "后端已降级，暂时无法获取站点",
       "fromMock": "展示内置演示站点（后端未接通或上游暂不可用）",
-      "focus": "已在地图聚焦该站点"
+      "focus": "已在地图聚焦该站点",
+      "locateAction": "定位到我的位置",
+      "locating": "定位中…",
+      "currentLocation": "我的位置",
+      "currentLocationNamed": "我的位置 · {place}",
+      "accuracyMedium": "定位精度约百米级，附近站点可能与实际有偏差",
+      "accuracyLow": "当前为粗略定位（精度可能达数公里），附近站点仅供参考",
+      "locate": {
+        "unsupported": "当前浏览器不支持定位，请改选行程中的地点",
+        "insecure": "定位需要 HTTPS 或 localhost 环境，当前页面无法获取位置",
+        "denied": "定位权限被拒绝，请在浏览器地址栏的站点设置里允许位置权限后重试",
+        "unavailable": "暂时无法获取位置（定位服务不可用），请改选行程中的地点",
+        "timeout": "定位超时，请重试或改选行程中的地点"
+      }
     },
     "nav": {
       "label": "一键导航",

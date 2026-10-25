@@ -204,11 +204,13 @@ export interface StationView extends NearbyStation {
   walkable: boolean
 }
 
-export type StationSource = 'live' | 'cache' | 'mock'
+export type StationSource = 'live' | 'cache' | 'degraded' | 'mock'
 
 export interface StationResult {
   stations: StationView[]
   source: StationSource
+  /** source=degraded 时后端给出的降级原因，直接展示给用户 */
+  degradedReason?: string
 }
 
 const WALKABLE_THRESHOLD_M = 800
@@ -309,6 +311,10 @@ const cacheWrite = (lng: number, lat: number, list: NearbyStation[]) => {
 /**
  * 拉取中心点附近的站点列表。
  * 优先走真实后端 /api/map/nearby-station；失败/未配置时读本地缓存，再不行回退内置 mock。
+ *
+ * 与 Web 端 `services/nearbyStation.ts` 同一套四态语义（live / cache / degraded / mock）：
+ * `degraded` 是后端明确说「上游不可用」，此时 data=[] 不代表「附近真没有」，
+ * 所以既不拿缓存冒充本次结果，也不给 mock 假站点，只如实透出降级原因。
  */
 export async function fetchNearbyStations(
   longitude: number,
@@ -323,13 +329,17 @@ export async function fetchNearbyStations(
     const res = await request<{ success: boolean; degraded?: boolean; message?: string; data: NearbyStation[] }>({
       url: `/api/map/nearby-station?${params}`,
     })
-    // 降级（Key 缺失/上游失败）时 data=[] 是「没取到」，不是「附近没有」，
-    // 交给下面的缓存/mock 兜底；真·空结果则如实返回空列表，不伪造站点。
-    if (res?.degraded) throw new Error(res.message || 'degraded')
+    // 降级（Key 缺失/上游失败）时 data=[] 是「没取到」，不是「附近没有」。
+    // 缓存是上一次的事实、mock 是编的，两者都不能当作本次结果，所以这里直接
+    // 返回 degraded + 空列表，由 UI 如实说明原因（契约 §2「绝不伪造站点」）。
+    if (res?.degraded) {
+      return { stations: [], source: 'degraded', degradedReason: res.message || '' }
+    }
     const list = normalizeList(res)
     if (list.length > 0) cacheWrite(longitude, latitude, list)
     return { stations: list.map(toStationView), source: 'live' }
   } catch {
+    // 网络/5xx/解析失败：这才是「拿不到响应」，可以走缓存 → mock
     const cached = cacheRead(longitude, latitude)
     if (cached && cached.length) return { stations: cached, source: 'cache' }
     return { stations: mockStations(longitude, latitude).map(toStationView), source: 'mock' }

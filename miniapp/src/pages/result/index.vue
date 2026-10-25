@@ -67,16 +67,45 @@
                   </view>
                 </view>
 
-                <!-- 附近站点：切换"第几天·景点"，展示其周边地铁/公交站 + 步行可达提示 -->
-                <view v-if="stationCenters.length" class="map-stations">
+                <!-- 附近站点：切换"第几天·景点"，或切到「我的位置」，展示周边地铁/公交站 + 步行可达提示 -->
+                <view v-if="stationCenters.length || allowCurrentLocation" class="map-stations">
                   <view class="map-stations__head">
                     <text class="map-stations__title">附近站点</text>
-                    <text v-if="stationSource === 'cache'" class="map-stations__note">已用缓存</text>
-                    <text v-else-if="stationSource === 'mock'" class="map-stations__note">演示数据</text>
+                    <view class="map-stations__head-right">
+                      <text v-if="stationSource === 'cache'" class="map-stations__note">已用缓存</text>
+                      <text v-else-if="stationSource === 'degraded'" class="map-stations__note">后端已降级</text>
+                      <text v-else-if="stationSource === 'mock'" class="map-stations__note">演示数据</text>
+                      <text
+                        v-if="allowCurrentLocation"
+                        class="map-stations__locate"
+                        :class="{ 'is-active': selectedStationCenter === CURRENT_STATION_KEY }"
+                        @click="useCurrentLocation"
+                      >
+                        {{ locating ? '定位中…' : '我的位置' }}
+                      </text>
+                    </view>
+                  </view>
+
+                  <view v-if="locateErrorText" class="map-stations__locate-error">
+                    <text>{{ locateErrorText }}</text>
+                  </view>
+                  <view v-else-if="accuracyNote" class="map-stations__accuracy">
+                    <text>{{ accuracyNote }}</text>
                   </view>
 
                   <scroll-view scroll-x class="map-stations__switch" show-scrollbar="false">
                     <view class="map-stations__switch-inner">
+                      <wd-tag
+                        v-if="currentCenter"
+                        round
+                        size="medium"
+                        :type="selectedStationCenter === CURRENT_STATION_KEY ? 'primary' : 'default'"
+                        :plain="selectedStationCenter !== CURRENT_STATION_KEY"
+                        custom-class="map-stations__chip"
+                        @click="selectStationCenter(CURRENT_STATION_KEY)"
+                      >
+                        {{ currentCenter.label }}
+                      </wd-tag>
                       <wd-tag
                         v-for="c in stationCenters"
                         :key="c.key"
@@ -85,7 +114,7 @@
                         :type="selectedStationCenter === c.key ? 'primary' : 'default'"
                         :plain="selectedStationCenter !== c.key"
                         custom-class="map-stations__chip"
-                        @click="selectedStationCenter = c.key"
+                        @click="selectStationCenter(c.key)"
                       >
                         {{ c.label }}
                       </wd-tag>
@@ -98,7 +127,7 @@
                   <wd-status-tip
                     v-else-if="stations.length === 0"
                     image="content"
-                    tip="该位置附近暂无站点"
+                    :tip="stationSource === 'degraded' ? '后端已降级，暂时无法获取站点' : '该位置附近暂无站点'"
                   />
                   <view v-else class="map-stations__list">
                     <view
@@ -158,7 +187,13 @@ import DayCard from '@/components/DayCard.vue'
 import BudgetPanel from '@/components/BudgetPanel.vue'
 import WeatherCard from '@/components/WeatherCard.vue'
 import { useTripStore } from '@/stores/trip'
-import { getAttractionPhoto, fetchNearbyStations, type StationView } from '@/services/api'
+import {
+  getAttractionPhoto,
+  fetchNearbyStations,
+  reverseGeocode,
+  type StationView,
+  type StationSource,
+} from '@/services/api'
 import { guideShareToFriend } from '@/utils/share'
 
 const tripStore = useTripStore()
@@ -278,18 +313,126 @@ const stationCenters = computed(() => {
 const selectedStationCenter = ref('')
 const stations = ref<StationView[]>([])
 const stationsLoading = ref(false)
-const stationSource = ref<'live' | 'cache' | 'mock'>('live')
+const stationSource = ref<StationSource>('live')
+
+/*
+ * 当前位置：与行程中心点并列的一个可选中心。
+ * 小程序 `uni.getLocation({type:'gcj02'})` 拿到的**已经是 GCJ-02**（与后端契约一致），
+ * 不像 Web 端要自己从 WGS-84 转 —— 这里不能照抄 Web 的转换，会把坐标多平移一次。
+ */
+const CURRENT_STATION_KEY = '__current__'
+/** 小程序端「我的位置」始终可选：行程里一个坐标都没有时也能按当前位置看站点 */
+const allowCurrentLocation = true
+const locating = ref(false)
+const locateErrorText = ref('')
+/** 站点列表请求序号：并发切中心点时只让最后一次写状态 */
+let loadSeq = 0
+const currentPosition = ref<{ longitude: number; latitude: number; accuracy: number } | null>(null)
+const currentPlace = ref('')
+
+const currentCenter = computed(() => {
+  const pos = currentPosition.value
+  if (!pos) return null
+  return {
+    key: CURRENT_STATION_KEY,
+    label: currentPlace.value ? `我的位置·${currentPlace.value}` : '我的位置',
+    longitude: pos.longitude,
+    latitude: pos.latitude,
+  }
+})
+
+/** 定位精度提示：精度差时「附近」是失真的，必须如实说 */
+const accuracyNote = computed(() => {
+  if (selectedStationCenter.value !== CURRENT_STATION_KEY) return ''
+  const accuracy = currentPosition.value?.accuracy ?? -1
+  if (accuracy <= 0) return ''
+  if (accuracy > 2000) return '当前为粗略定位（精度可能达数公里），附近站点仅供参考'
+  if (accuracy > 500) return '定位精度约百米级，附近站点可能与实际有偏差'
+  return ''
+})
+
+/** 定位失败分类 → 用户能看懂的说明（小程序四种失败原因，能做的事不一样） */
+function describeLocateError(err: any): string {
+  const msg = String(err?.errMsg || err?.message || '')
+  if (msg.includes('deny') || msg.includes('auth') || msg.includes('denied')) {
+    return '定位权限被拒绝，请在右上角「···」→ 设置里允许位置权限后重试'
+  }
+  if (msg.includes('timeout') || msg.includes('超时')) {
+    return '定位超时，请重试或改选行程中的地点'
+  }
+  if (msg.includes('system permission') || msg.includes('系统')) {
+    return '系统定位服务未开启，请在手机设置里打开定位后重试'
+  }
+  return '暂时无法获取位置，请改选行程中的地点'
+}
+
+/** 手动切中心点：顺手把上一次的定位失败提示收掉，否则会一直挂在新列表上方 */
+function selectStationCenter(key: string) {
+  selectedStationCenter.value = key
+  locateErrorText.value = ''
+}
+
+/** 取当前位置（GCJ-02，小程序原生即 GCJ-02），成功后切到「我的位置」中心 */
+async function useCurrentLocation() {
+  if (locating.value) return
+  locating.value = true
+  locateErrorText.value = ''
+  try {
+    const res: any = await Promise.race([
+      new Promise((resolve, reject) => {
+        uni.getLocation({ type: 'gcj02', success: resolve, fail: reject })
+      }),
+      // uni.getLocation 自身有超时，但它偶发不回调（系统弹窗挂起时），自己再兜一层
+      new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 12000)),
+    ])
+
+    const longitude = Number(res?.longitude)
+    const latitude = Number(res?.latitude)
+    if (!Number.isFinite(longitude) || !Number.isFinite(latitude)) {
+      throw new Error('invalid')
+    }
+    const accuracy = Number.isFinite(Number(res?.accuracy)) ? Number(res.accuracy) : -1
+
+    currentPosition.value = { longitude, latitude, accuracy }
+    // 重按是「刷新」：key 不变不会触发 watch，得自己再拉一次
+    if (selectedStationCenter.value === CURRENT_STATION_KEY) {
+      await loadStations({ longitude, latitude })
+    } else {
+      selectedStationCenter.value = CURRENT_STATION_KEY
+    }
+
+    // 地名只是锦上添花，失败就保持「我的位置」四个字，不影响已成功的定位
+    reverseGeocode(latitude, longitude)
+      .then((geo: any) => {
+        const city = geo?.city || geo?.province || ''
+        const district = geo?.district || ''
+        currentPlace.value = [city, district].filter(Boolean).join('·')
+      })
+      .catch(() => {
+        /* 地名查不到就算了 */
+      })
+  } catch (err) {
+    locateErrorText.value = describeLocateError(err)
+    uni.showToast({ title: locateErrorText.value, icon: 'none', duration: 3000 })
+  } finally {
+    locating.value = false
+  }
+}
 
 async function loadStations(c: { longitude: number; latitude: number }) {
+  // 与 Web 端同样的问题：并发切换中心点时，只让最后一次请求写状态
+  const seq = ++loadSeq
   stationsLoading.value = true
   try {
     const res = await fetchNearbyStations(c.longitude, c.latitude)
+    if (seq !== loadSeq) return
     stations.value = res.stations
     stationSource.value = res.source
   } catch {
+    if (seq !== loadSeq) return
     stations.value = []
   } finally {
-    stationsLoading.value = false
+    if (seq === loadSeq) stationsLoading.value = false
   }
 }
 
@@ -304,6 +447,12 @@ function focusStation(s: StationView) {
 
 watch(selectedStationCenter, (key) => {
   if (!key) return
+  // 「我的位置」的坐标存在 currentPosition 里，不在 stationCenters 里
+  if (key === CURRENT_STATION_KEY) {
+    const pos = currentPosition.value
+    if (pos) loadStations(pos)
+    return
+  }
   const c = stationCenters.value.find((item) => item.key === key)
   if (c) loadStations(c)
 })
@@ -311,6 +460,8 @@ watch(selectedStationCenter, (key) => {
 watch(
   () => tripPlan.value?.days,
   () => {
+    // 已选「我的位置」时不要被行程重算抢走选择
+    if (selectedStationCenter.value === CURRENT_STATION_KEY) return
     if (tripPlan.value?.days?.length && !selectedStationCenter.value) {
       selectedStationCenter.value = stationCenters.value[0]?.key || ''
     }
@@ -467,6 +618,42 @@ onShareAppMessage(() => {
   font-size: 30rpx;
   font-weight: 700;
   color: #1A1A2E;
+}
+
+.map-stations__head-right {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+}
+
+/* 「我的位置」按钮：与标签同一视觉语言，选中态用主色描边 */
+.map-stations__locate {
+  padding: 4rpx 16rpx;
+  border-radius: 999rpx;
+  border: 1px solid #4EADBD;
+  color: #4EADBD;
+  font-size: 22rpx;
+  line-height: 1.6;
+}
+
+.map-stations__locate.is-active {
+  background: #4EADBD;
+  color: #ffffff;
+}
+
+.map-stations__locate-error,
+.map-stations__accuracy {
+  margin-bottom: 16rpx;
+  font-size: 22rpx;
+  line-height: 1.5;
+}
+
+.map-stations__locate-error {
+  color: #E8833A;
+}
+
+.map-stations__accuracy {
+  color: #9CA3AF;
 }
 
 .map-stations__note {

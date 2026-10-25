@@ -312,7 +312,20 @@
       "fromDegraded": "Backend degraded (map provider unavailable) — no stations shown",
       "degradedEmpty": "Backend degraded — stations are unavailable right now",
       "fromMock": "Showing built-in demo stations (backend or map provider unavailable)",
-      "focus": "Focused the map on this station"
+      "focus": "Focused the map on this station",
+      "locateAction": "Use my location",
+      "locating": "Locating…",
+      "currentLocation": "My location",
+      "currentLocationNamed": "My location · {place}",
+      "accuracyMedium": "Location is accurate to roughly a hundred metres — nearby stations may be off",
+      "accuracyLow": "This is a coarse location (accuracy may be several kilometres) — nearby stations are indicative only",
+      "locate": {
+        "unsupported": "This browser does not support geolocation — pick a stop from your itinerary instead",
+        "insecure": "Geolocation needs HTTPS or localhost; this page cannot read your position",
+        "denied": "Location permission was denied — allow it in the browser's site settings and try again",
+        "unavailable": "Your position is unavailable right now — pick a stop from your itinerary instead",
+        "timeout": "Locating timed out — try again or pick a stop from your itinerary"
+      }
     },
     "nav": {
       "label": "Navigate",
