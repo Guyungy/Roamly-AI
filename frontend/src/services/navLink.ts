@@ -8,17 +8,18 @@
  *
  * 后端该接口是纯本地拼接、不依赖 Key，因此这里失败即视为「后端不可用」，
  * 按钮不渲染，不做前端兜底拼接。
+ *
+ * 基址拼接与错误分类已收口到 `./http`（P-5）。本文件只剩缓存与批量并发。
  */
+
+import type { Location } from '@/types'
+import { getJson, isAbortError, locationParams } from './http'
 
 export type NavTravelMode = 'walk' | 'drive' | 'transit'
 
 /** 地点卡片的默认出行方式：走到景点/酒店，步行最贴近真实意图 */
 const DEFAULT_MODE: NavTravelMode = 'walk'
 
-/**
- * 自建后端基址。本地开发留空走 Vite 代理；线上单独部署后端时由 VITE_API_BASE_URL 注入。
- */
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? ''
 const API_NAV_LINK = '/api/map/nav-link'
 
 export interface NavLink {
@@ -26,12 +27,6 @@ export interface NavLink {
   destination: string
   provider: string
   url: string
-}
-
-interface NavLinkResponse {
-  success: boolean
-  message?: string
-  data?: NavLink | null
 }
 
 /** 同一次会话内同名同坐标的链接不会变，命中缓存可省掉重复请求 */
@@ -54,7 +49,7 @@ const cacheKey = (
  */
 export async function fetchNavLink(
   destination: string,
-  location?: { latitude: number; longitude: number },
+  location?: Location,
   mode: NavTravelMode = DEFAULT_MODE,
   signal?: AbortSignal
 ): Promise<string | null> {
@@ -65,22 +60,28 @@ export async function fetchNavLink(
   const hit = cache.get(key)
   if (hit) return hit
 
-  const params = new URLSearchParams({ destination: name, mode })
-  if (location && Number.isFinite(location.latitude) && Number.isFinite(location.longitude)) {
-    params.set('latitude', String(location.latitude))
-    params.set('longitude', String(location.longitude))
-  }
-
+  // 契约 §4 的 nav-link 接口不带 degraded 语义（纯本地拼接、不依赖 Key），
+  // 所以这里任何 ApiFailure 都只意味着「后端不可用」→ 不渲染按钮。
   try {
-    const resp = await fetch(`${API_BASE_URL}${API_NAV_LINK}?${params.toString()}`, { signal })
-    if (!resp.ok) return null
-    const payload = (await resp.json()) as NavLinkResponse
-    const url = payload?.success ? payload.data?.url : null
+    const data = await getJson<NavLink | null>(API_NAV_LINK, {
+      query: {
+        destination: name,
+        mode,
+        // 有坐标才带；后端按 (lng, lat) 两个 float 收，不拼 "lat,lng" 单串
+        ...(location && Number.isFinite(location.latitude) && Number.isFinite(location.longitude)
+          ? locationParams(location)
+          : {}),
+      },
+      signal,
+    })
+    const url = data?.url
     if (!url) return null
     cache.set(key, url)
     return url
-  } catch {
-    // 后端不可用（未部署 / 断网 / 请求被取消）：不渲染按钮，绝不前端兜底拼接
+  } catch (err) {
+    // 请求被取消是调用方主动行为，不算「后端不可用」，但结果同样是不渲染
+    if (isAbortError(err)) return null
+    // 后端不可用（未部署 / 断网 / 5xx）：不渲染按钮，绝不前端兜底拼接
     return null
   }
 }
@@ -92,14 +93,14 @@ export async function fetchNavLink(
  * 同时打后端。
  */
 export async function fetchNavLinks(
-  items: Array<{ name: string; location?: { latitude: number; longitude: number } }>,
+  items: Array<{ name: string; location?: Location }>,
   options: { mode?: NavTravelMode; concurrency?: number; signal?: AbortSignal } = {}
 ): Promise<Record<string, string>> {
   const mode = options.mode ?? DEFAULT_MODE
   const concurrency = Math.max(1, options.concurrency ?? 4)
 
   // 同名地点只请求一次（概览与每日行程会重复出现同一个景点）
-  const unique = new Map<string, { name: string; location?: { latitude: number; longitude: number } }>()
+  const unique = new Map<string, { name: string; location?: Location }>()
   items.forEach((item) => {
     const name = item.name?.trim()
     if (name && !unique.has(name)) unique.set(name, { ...item, name })
@@ -112,6 +113,7 @@ export async function fetchNavLinks(
     for (;;) {
       const next = queue.shift()
       if (!next) return
+      if (options.signal?.aborted) return
       const url = await fetchNavLink(next.name, next.location, mode, options.signal)
       if (url) out[next.name] = url
     }

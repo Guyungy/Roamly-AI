@@ -2,7 +2,11 @@
 import { computed, ref, watch, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { NSelect, NSpin, NEmpty, type SelectOption } from 'naive-ui'
-import { fetchNearbyStations, type StationView } from '@/services/nearbyStation'
+import {
+  fetchNearbyStations,
+  type NearbyStationSource,
+  type StationView,
+} from '@/services/nearbyStation'
 import {
   infoColor,
   successColor,
@@ -31,7 +35,8 @@ const { t } = useI18n()
 const selectedKey = ref<string>('')
 const stations = ref<StationView[]>([])
 const loading = ref(false)
-const source = ref<'live' | 'cache' | 'mock'>('live')
+const source = ref<NearbyStationSource>('live')
+const degradedReason = ref('')
 const failed = ref(false)
 let controller: AbortController | null = null
 
@@ -44,8 +49,22 @@ const activeCenter = computed<StationCenter | null>(() => {
   return found ?? null
 })
 
-/** 数据是否来自降级（缓存或内置兜底） */
-const isFallback = computed(() => source.value === 'cache' || source.value === 'mock')
+/** 数据是否来自降级（缓存 / 后端降级 / 内置兜底）——三者文案不同，不能混说 */
+const isFallback = computed(() => source.value !== 'live')
+
+/** 降级文案的 i18n key，按来源严格区分 */
+const fallbackNoteKey = computed(() => {
+  switch (source.value) {
+    case 'cache':
+      return 'result.station.fromCache'
+    case 'degraded':
+      return 'result.station.fromDegraded'
+    case 'mock':
+      return 'result.station.fromMock'
+    default:
+      return ''
+  }
+})
 
 const hasViewableStations = computed(() => stations.value.length > 0 && loading.value === false)
 
@@ -67,10 +86,14 @@ const loadStations = async (center: StationCenter) => {
     )
     stations.value = result.stations
     source.value = result.source
+    degradedReason.value = result.degradedReason ?? ''
   } catch (err) {
+    // 只有「取消」会走到这里（fetchNearbyStations 内部已把其余失败降级），
+    // 切中心点时旧请求被取消，必须原样丢弃，不能把列表清空
     if ((err as Error).name === 'AbortError') return
     stations.value = []
     source.value = 'live'
+    degradedReason.value = ''
     failed.value = true
   } finally {
     loading.value = false
@@ -135,7 +158,7 @@ onUnmounted(() => {
     <n-empty
       v-else-if="!hasViewableStations"
       class="station-panel__empty"
-      :description="t('result.station.empty')"
+      :description="source === 'degraded' ? t('result.station.degradedEmpty') : t('result.station.empty')"
     >
       <template #icon>
         <span aria-hidden="true">🚌</span>
@@ -188,8 +211,14 @@ onUnmounted(() => {
       </li>
     </ul>
 
-    <p v-if="isFallback && hasViewableStations" class="station-panel__note">
-      {{ source === 'cache' ? t('result.station.fromCache') : t('result.station.fromMock') }}
+    <p
+      v-if="isFallback && !loading && (hasViewableStations || source === 'degraded')"
+      class="station-panel__note"
+    >
+      {{ t(fallbackNoteKey) }}
+      <span v-if="source === 'degraded' && degradedReason" class="station-panel__reason">
+        {{ degradedReason }}
+      </span>
     </p>
   </div>
 </template>
@@ -345,5 +374,13 @@ onUnmounted(() => {
   margin: var(--sp-3) 0 0;
   font-size: var(--fs-xs);
   color: var(--c-ink-400);
+}
+
+/* 后端降级原因（如「Key 未配置」）：附在文案后面，用小一号字弱化，但必须可见 */
+.station-panel__reason {
+  display: block;
+  margin-top: 2px;
+  color: var(--c-ink-500);
+  opacity: 0.85;
 }
 </style>

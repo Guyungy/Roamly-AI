@@ -693,6 +693,7 @@ import type { StationView } from '@/services/nearbyStation'
 import AIChat from '@/components/AIChat.vue'
 import NavButton from '@/components/NavButton.vue'
 import { fetchNavLinks, type NavTravelMode } from '@/services/navLink'
+import { fetchAttractionPhoto } from '@/services/attractionPhoto'
 import {
   AMAP_MAP_FEATURES,
   AMAP_MAP_STYLE,
@@ -2374,20 +2375,13 @@ const loadAttractionPhotos = async () => {
 
   if (hasOwnBackend) {
     const promises: Promise<void>[] = []
-    const apiBase = import.meta.env.VITE_API_BASE_URL ?? ''
 
     plan.days.forEach((day) => {
       day.attractions.forEach((attraction) => {
-        const promise = fetch(`${apiBase}/api/poi/photo?name=${encodeURIComponent(attraction.name)}&city=${encodeURIComponent(plan.city)}`)
-          .then((res) => res.json())
-          .then((data) => {
-            if (data.success && data.data.photo_url) {
-              attractionPhotos.value[attraction.name] = data.data.photo_url
-            }
-          })
-          .catch((err) => {
-            console.error(`获取${attraction.name}图片失败:`, err)
-          })
+        // 统一调用层收口（P-5）：基址拼接与 success 判定不再写在页面里
+        const promise = fetchAttractionPhoto(attraction.name, plan.city).then((url) => {
+          if (url) attractionPhotos.value[attraction.name] = url
+        })
 
         promises.push(promise)
       })
