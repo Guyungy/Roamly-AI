@@ -28,6 +28,10 @@ class Settings(BaseSettings):
     # 高德地图API配置
     vite_amap_web_key: str = ""
 
+    # 腾讯位置服务配置（R1 契约 §1.4：QPS 上限 10，日 PV 上限 11000）
+    tencent_map_key: str = ""
+    tencent_map_referer: str = "roamly"
+
     # Unsplash API配置
     unsplash_access_key: str = ""
     unsplash_secret_key: str = ""

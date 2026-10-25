@@ -297,6 +297,24 @@
       "transit": "Transit",
       "riding": "Cycle",
       "straight": "Straight line"
+    },
+    "station": {
+      "title": "Nearby stations",
+      "loading": "Searching nearby stations…",
+      "empty": "No stations found near this location",
+      "loadFailed": "Failed to load stations, please try again",
+      "subway": "Metro",
+      "bus": "Bus",
+      "meters": "{value} m",
+      "walkHint": "{minutes} min walk · {km} km",
+      "walkTitle": "Walking accessibility (estimated from straight-line distance)",
+      "fromCache": "Network issue — showing the most recently cached stations",
+      "fromMock": "Showing built-in demo stations (backend or map provider unavailable)",
+      "focus": "Focused the map on this station"
+    },
+    "nav": {
+      "label": "Navigate",
+      "buttonTitle": "Open navigation in a new tab"
     }
   },
   "auth": {

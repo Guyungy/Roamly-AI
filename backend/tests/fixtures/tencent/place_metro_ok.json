@@ -1,0 +1,67 @@
+{
+  "status": 0,
+  "message": "Success",
+  "count": 3,
+  "data": [
+    {
+      "id": "2199028595218",
+      "title": "万泉河桥[地铁站]",
+      "address": "地铁16号线",
+      "tel": "",
+      "category": "基础设施:交通设施:地铁站",
+      "type": 2,
+      "location": {
+        "lat": 39.985231,
+        "lng": 116.299016
+      },
+      "_distance": 732.46,
+      "ad_info": {
+        "adcode": 110108,
+        "province": "北京市",
+        "city": "北京市",
+        "district": "海淀区"
+      }
+    },
+    {
+      "id": "2199027905900",
+      "title": "中关村[地铁站]",
+      "address": "地铁4号线大兴线",
+      "tel": "",
+      "category": "基础设施:交通设施:地铁站",
+      "type": 2,
+      "location": {
+        "lat": 39.984055,
+        "lng": 116.316478
+      },
+      "_distance": 766.93,
+      "ad_info": {
+        "adcode": 110108,
+        "province": "北京市",
+        "city": "北京市",
+        "district": "海淀区"
+      }
+    },
+    {
+      "id": "2199027130429",
+      "title": "苏州街[地铁站]",
+      "address": "地铁10号线外环,地铁16号线",
+      "tel": "",
+      "category": "基础设施:交通设施:地铁站",
+      "type": 2,
+      "location": {
+        "lat": 39.975584,
+        "lng": 116.306285
+      },
+      "_distance": 959.48,
+      "ad_info": {
+        "adcode": 110108,
+        "province": "北京市",
+        "city": "北京市",
+        "district": "海淀区"
+      }
+    }
+  ],
+  "region": {
+    "title": "中国"
+  }
+}
