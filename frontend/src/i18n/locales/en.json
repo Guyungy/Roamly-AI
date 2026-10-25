@@ -311,6 +311,10 @@
       "fromCache": "Network issue — showing the most recently cached stations",
       "fromMock": "Showing built-in demo stations (backend or map provider unavailable)",
       "focus": "Focused the map on this station"
+    },
+    "nav": {
+      "label": "Navigate",
+      "buttonTitle": "Open navigation in a new tab"
     }
   },
   "auth": {

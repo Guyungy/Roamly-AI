@@ -381,6 +381,9 @@
                       </div>
                       <p class="attraction-desc">{{ item.description }}</p>
                     </dl>
+                    <div v-if="!editMode && getNavUrl(item.name)" class="nav-actions">
+                      <NavButton :url="getNavUrl(item.name)!" />
+                    </div>
                   </div>
                 </article>
               </div>
@@ -414,6 +417,9 @@
                       <dd>{{ day.hotel.distance }}</dd>
                     </div>
                   </dl>
+                  <div v-if="getNavUrl(day.hotel.name)" class="nav-actions">
+                    <NavButton :url="getNavUrl(day.hotel.name)!" />
+                  </div>
                 </div>
               </template>
 
@@ -678,6 +684,8 @@ import OverviewAttractionCard from '@/components/OverviewAttractionCard.vue'
 import NearbyStationPanel from '@/components/NearbyStationPanel.vue'
 import type { StationView } from '@/services/nearbyStation'
 import AIChat from '@/components/AIChat.vue'
+import NavButton from '@/components/NavButton.vue'
+import { fetchNavLinks, type NavTravelMode } from '@/services/navLink'
 import {
   AMAP_MAP_FEATURES,
   AMAP_MAP_STYLE,
@@ -1553,6 +1561,9 @@ onMounted(async () => {
     // 加载景点真照片：不 await —— 它要先等高德 JS API、再串一串 POI 搜索，
     // 堵在这里会把地图初始化整体推迟；照片就绪后 Vue 会自动把 img src 换掉
     void loadAttractionPhotos()
+    // 一键导航链接同样不 await：链接由后端生成，取不到就不渲染按钮，
+    // 不能挡住地图初始化
+    void loadNavLinks()
     // 加载知识图谱：自建后端会带回 graph_data；走云模型时没有，就在本地按行程推导一份，
     // 否则常驻展开的「知识图谱」区块会是空的
     graphData.value = tripStore.graphData ?? buildKnowledgeGraphFromPlan(tripPlan.value)
@@ -2484,6 +2495,28 @@ const handleImageLoad = (event: Event) => {
   void img.offsetWidth // 强制重排：同名 class 不加这一次重排是不会重放动画的
   img.classList.add('is-loaded')
 }
+
+/*
+ * 一键导航链接：全部由后端 `GET /api/map/nav-link` 生成（契约 §4），
+ * 前端不再自己拼腾讯 URI。挂载后按行程里的景点/酒店批量取一次，
+ * 取到的存进 navUrlMap，取不到的条目不出现 → 按钮不渲染。
+ */
+const navUrlMap = ref<Record<string, string>>({})
+const NAV_MODE: NavTravelMode = 'walk'
+
+const loadNavLinks = async () => {
+  const plan = tripPlan.value
+  if (!plan) return
+  const items: Array<{ name: string; location?: { latitude: number; longitude: number } }> = []
+  plan.days.forEach((day) => {
+    day.attractions.forEach((a) => items.push({ name: a.name, location: a.location }))
+    if (day.hotel) items.push({ name: day.hotel.name, location: day.hotel.location })
+  })
+  navUrlMap.value = await fetchNavLinks(items, { mode: NAV_MODE })
+}
+
+/** 目的地名 → 后端生成的导航链接；没取到返回 null，模板据此不渲染按钮 */
+const getNavUrl = (name: string): string | null => navUrlMap.value[name] ?? null
 
 // 图片加载失败时的处理：退回本地插画（比一块灰底 + 一行"加载失败"体面得多）
 const handleImageError = (event: Event) => {
@@ -4548,6 +4581,13 @@ const drawRoutes = async (
   min-width: 0;
   font-size: var(--fs-sm);
   color: var(--c-ink-700);
+}
+
+/* 一键导航按钮的承载行：右对齐，与卡片内容留出呼吸 */
+.nav-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: var(--sp-3);
 }
 
 .overview-head {
