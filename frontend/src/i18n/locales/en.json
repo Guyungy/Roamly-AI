@@ -309,6 +309,8 @@
       "walkHint": "{minutes} min walk · {km} km",
       "walkTitle": "Walking accessibility (estimated from straight-line distance)",
       "fromCache": "Network issue — showing the most recently cached stations",
+      "fromDegraded": "Backend degraded (map provider unavailable) — no stations shown",
+      "degradedEmpty": "Backend degraded — stations are unavailable right now",
       "fromMock": "Showing built-in demo stations (backend or map provider unavailable)",
       "focus": "Focused the map on this station"
     },

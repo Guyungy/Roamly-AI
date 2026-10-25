@@ -1,10 +1,9 @@
 import axios from 'axios'
 import type { TripFormData, TripPlanResponse, TripChatRequest, TripChatResponse } from '@/types'
 import { hasOwnBackend } from '@/config/cloud'
+import { API_BASE_URL } from './http'
 import { chatWithTripCloud, describeCloudError, generateTripPlanWithCloud } from './cloudLLM'
 import type { ProgressReporter } from './cloudLLM'
-
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? ''
 
 const apiClient = axios.create({
   baseURL: API_BASE_URL,
