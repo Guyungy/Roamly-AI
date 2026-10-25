@@ -226,17 +226,24 @@
         <section id="map" class="result-section">
           <h2 class="section-title">{{ t('result.side.map') }}</h2>
           <div class="panel map-card">
-            <div id="amap-container" class="map-canvas"></div>
-            <div v-if="mapStatus !== 'ready'" class="map-placeholder">
-              <n-spin v-if="mapStatus === 'loading'" size="large" />
-              <template v-else>
-                <p class="map-placeholder__text">
-                  {{ mapStatus === 'unavailable' ? t('result.messages.mapUnavailable') : t('result.messages.mapLoadFailed') }}
-                </p>
-                <n-button v-if="mapStatus === 'error'" size="small" @click="initMap(true)">
-                  {{ t('result.messages.mapRetry') }}
-                </n-button>
-              </template>
+            <!--
+              占位层只覆盖画布，不覆盖整张卡片。
+              卡片里还挂着附近站点面板，它不依赖高德；占位层若 inset:0 铺满卡片，
+              高德不可用时会把整份站点列表一起盖掉（实测 3122px 全覆盖）。
+            -->
+            <div class="map-canvas-wrap">
+              <div id="amap-container" class="map-canvas"></div>
+              <div v-if="mapStatus !== 'ready'" class="map-placeholder">
+                <n-spin v-if="mapStatus === 'loading'" size="large" />
+                <template v-else>
+                  <p class="map-placeholder__text">
+                    {{ mapStatus === 'unavailable' ? t('result.messages.mapUnavailable') : t('result.messages.mapLoadFailed') }}
+                  </p>
+                  <n-button v-if="mapStatus === 'error'" size="small" @click="initMap(true)">
+                    {{ t('result.messages.mapRetry') }}
+                  </n-button>
+                </template>
+              </div>
             </div>
 
             <!--
@@ -4925,6 +4932,12 @@ const drawRoutes = async (
 }
 
 /* 画布给固定高度：高德初始化时容器必须有确定尺寸，flex 撑开会让首帧算错 */
+/* 占位层的定位基准：只包住画布，不包住整张卡片（见模板注释） */
+.map-canvas-wrap {
+  position: relative;
+  flex: none;
+}
+
 .map-canvas {
   flex: none;
   width: 100%;
