@@ -66,6 +66,64 @@
                     <wd-status-tip image="content" tip="暂无景点坐标数据" />
                   </view>
                 </view>
+
+                <!-- 附近站点：切换"第几天·景点"，展示其周边地铁/公交站 + 步行可达提示 -->
+                <view v-if="stationCenters.length" class="map-stations">
+                  <view class="map-stations__head">
+                    <text class="map-stations__title">附近站点</text>
+                    <text v-if="stationSource === 'cache'" class="map-stations__note">已用缓存</text>
+                    <text v-else-if="stationSource === 'mock'" class="map-stations__note">演示数据</text>
+                  </view>
+
+                  <scroll-view scroll-x class="map-stations__switch" show-scrollbar="false">
+                    <view class="map-stations__switch-inner">
+                      <wd-tag
+                        v-for="c in stationCenters"
+                        :key="c.key"
+                        round
+                        size="medium"
+                        :type="selectedStationCenter === c.key ? 'primary' : 'default'"
+                        :plain="selectedStationCenter !== c.key"
+                        custom-class="map-stations__chip"
+                        @click="selectedStationCenter = c.key"
+                      >
+                        {{ c.label }}
+                      </wd-tag>
+                    </view>
+                  </scroll-view>
+
+                  <view v-if="stationsLoading" class="map-stations__state">
+                    <text class="map-stations__state-text">正在检索附近站点…</text>
+                  </view>
+                  <wd-status-tip
+                    v-else-if="stations.length === 0"
+                    image="content"
+                    tip="该位置附近暂无站点"
+                  />
+                  <view v-else class="map-stations__list">
+                    <view
+                      v-for="s in stations"
+                      :key="s.id"
+                      class="map-station-row"
+                      @click="focusStation(s)"
+                    >
+                      <view class="map-station-row__type" :class="`is-${s.type}`">
+                        {{ s.type === 'subway' ? '地铁' : '公交' }}
+                      </view>
+                      <view class="map-station-row__main">
+                        <text class="map-station-row__name">{{ s.name }}</text>
+                        <text class="map-station-row__address">{{ s.address || '—' }}</text>
+                      </view>
+                      <view class="map-station-row__meta">
+                        <text class="map-station-row__distance">{{ s.distance }} 米</text>
+                        <text
+                          class="map-station-row__walk"
+                          :class="{ 'is-far': !s.walkable }"
+                        >步行约 {{ s.walkMinutes }} 分钟 · {{ s.walkKm }} 公里</text>
+                      </view>
+                    </view>
+                  </view>
+                </view>
               </template>
             </view>
           </wd-tab>
@@ -94,13 +152,13 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import { onShareAppMessage } from '@dcloudio/uni-app'
 import DayCard from '@/components/DayCard.vue'
 import BudgetPanel from '@/components/BudgetPanel.vue'
 import WeatherCard from '@/components/WeatherCard.vue'
 import { useTripStore } from '@/stores/trip'
-import { getAttractionPhoto } from '@/services/api'
+import { getAttractionPhoto, fetchNearbyStations, type StationView } from '@/services/api'
 import { guideShareToFriend } from '@/utils/share'
 
 const tripStore = useTripStore()
@@ -195,6 +253,70 @@ const mapPolyline = computed(() => {
     dottedLine: true,
   }]
 })
+
+// ============ 附近站点 ============
+
+/** 行程里所有「天 + 景点」作为可切换的附近站点查看中心 */
+const stationCenters = computed(() => {
+  if (!tripPlan.value?.days) return []
+  const centers: { key: string; label: string; longitude: number; latitude: number }[] = []
+  tripPlan.value.days.forEach((day) => {
+    ;(day.attractions || []).forEach((attr, idx) => {
+      const loc = attr.location
+      if (!loc || !loc.latitude || !loc.longitude) return
+      centers.push({
+        key: `D${day.day_index + 1}-${idx + 1}`,
+        label: `第${day.day_index + 1}天·${idx + 1}`,
+        longitude: loc.longitude,
+        latitude: loc.latitude,
+      })
+    })
+  })
+  return centers
+})
+
+const selectedStationCenter = ref('')
+const stations = ref<StationView[]>([])
+const stationsLoading = ref(false)
+const stationSource = ref<'live' | 'cache' | 'mock'>('live')
+
+async function loadStations(c: { longitude: number; latitude: number }) {
+  stationsLoading.value = true
+  try {
+    const res = await fetchNearbyStations(c.longitude, c.latitude)
+    stations.value = res.stations
+    stationSource.value = res.source
+  } catch {
+    stations.value = []
+  } finally {
+    stationsLoading.value = false
+  }
+}
+
+function focusStation(s: StationView) {
+  const ctx = uni.createMapContext('trip-map')
+  ctx.moveToLocation({
+    latitude: s.location.latitude,
+    longitude: s.location.longitude,
+  })
+  uni.showToast({ title: '已聚焦该站点', icon: 'none' })
+}
+
+watch(selectedStationCenter, (key) => {
+  if (!key) return
+  const c = stationCenters.value.find((item) => item.key === key)
+  if (c) loadStations(c)
+})
+
+watch(
+  () => tripPlan.value?.days,
+  () => {
+    if (tripPlan.value?.days?.length && !selectedStationCenter.value) {
+      selectedStationCenter.value = stationCenters.value[0]?.key || ''
+    }
+  },
+  { immediate: true }
+)
 
 // 加载景点图片
 async function loadAttractionImages() {
@@ -324,6 +446,138 @@ onShareAppMessage(() => {
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+/* 附近站点 */
+.map-stations {
+  margin-top: 24rpx;
+  background: #ffffff;
+  border-radius: 24rpx;
+  padding: 28rpx;
+}
+
+.map-stations__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20rpx;
+}
+
+.map-stations__title {
+  font-size: 30rpx;
+  font-weight: 700;
+  color: #1A1A2E;
+}
+
+.map-stations__note {
+  font-size: 22rpx;
+  color: #9CA3AF;
+}
+
+.map-stations__switch {
+  white-space: nowrap;
+  margin-bottom: 24rpx;
+}
+
+.map-stations__switch-inner {
+  display: flex;
+  gap: 16rpx;
+  padding: 4rpx 0;
+}
+
+.map-stations__chip {
+  flex-shrink: 0;
+}
+
+.map-stations__state {
+  padding: 32rpx 0;
+}
+
+.map-stations__state-text {
+  font-size: 26rpx;
+  color: #9CA3AF;
+}
+
+.map-stations__list {
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+}
+
+.map-station-row {
+  display: flex;
+  align-items: center;
+  gap: 20rpx;
+  padding: 24rpx;
+  background: #F5F6FA;
+  border-radius: 16rpx;
+}
+
+.map-station-row__type {
+  flex: none;
+  width: 72rpx;
+  height: 40rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999rpx;
+  font-size: 22rpx;
+  font-weight: 600;
+}
+
+.map-station-row__type.is-subway {
+  background: rgba(78, 173, 189, 0.12);
+  color: #4EADBD;
+}
+
+.map-station-row__type.is-bus {
+  background: rgba(14, 159, 138, 0.12);
+  color: #0E9F8A;
+}
+
+.map-station-row__main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4rpx;
+}
+
+.map-station-row__name {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #1A1A2E;
+}
+
+.map-station-row__address {
+  font-size: 22rpx;
+  color: #9CA3AF;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.map-station-row__meta {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4rpx;
+}
+
+.map-station-row__distance {
+  font-size: 22rpx;
+  color: #6B7280;
+}
+
+.map-station-row__walk {
+  font-size: 22rpx;
+  font-weight: 600;
+  color: #0E9F8A;
+}
+
+.map-station-row__walk.is-far {
+  color: #D98B0B;
 }
 
 .fab-btn {
