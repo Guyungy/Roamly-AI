@@ -290,14 +290,22 @@ class TencentMapService:
         longitude: Optional[float],
         latitude: Optional[float],
     ) -> Optional[CityCenter]:
-        """城市名 / 坐标 → 城市中心（契约 §5）"""
-        if longitude is not None and latitude is not None:
-            payload = await self._get(
+        """城市名 / 坐标 → 城市中心（契约 §5）
+
+        城市名优先：它已经是「哪座城市」的答案，再拿坐标反查一遍只是多打一次
+        上游，还可能反查到与城市名不一致的结果（小程序两个都传）。
+        只有没给城市名时才用坐标反查，且**反查完还要再查一次城市中心** ——
+        逆地理编码响应里的 `result.location` 就是传入坐标本身，直接拿来当原点
+        会让「城市探索」变成「附近有什么」，还会让同城所有用户共用第一个
+        请求者的 distance/score（缓存键只有 (城市, 类别)）。
+        """
+        name = (city or "").strip()
+        if not name and longitude is not None and latitude is not None:
+            reverse = await self._get(
                 "/geocoder/v1/", {"location": f"{latitude},{longitude}"}
             )
-            return adapter.parse_reverse_city(payload)
+            name = (adapter.parse_reverse_city_name(reverse) or "").strip()
 
-        name = (city or "").strip()
         if not name:
             return None
         payload = await self._get("/geocoder/v1/", {"address": name})

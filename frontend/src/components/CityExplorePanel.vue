@@ -12,6 +12,7 @@
 import { computed, onUnmounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { NButton, NSpin } from 'naive-ui'
+import type { Location } from '@/types'
 import {
   fetchCityExplore,
   EXPLORE_KINDS,
@@ -20,6 +21,7 @@ import {
   type ExploreKind,
 } from '@/services/cityExplore'
 import { fetchNavLink } from '@/services/navLink'
+import { hasExploreOrigin, resolveExploreOrigin } from '@/services/cityExploreOrigin'
 import {
   getCurrentLocation,
   LocateFailure,
@@ -45,12 +47,24 @@ const locating = ref(false)
 const locateError = ref<LocateFailureKind | null>(null)
 /** 用户定位得到的城市；一旦有值就压过 props.city（用户显式表达「我要看我的城市」） */
 const locatedCity = ref('')
+/**
+ * 定位得到的坐标。逆地理编码查不到城市名时（后端未配高德 Key）靠它兜底：
+ * 后端能按坐标反查城市（契约 §5）。它与 locatedCity 互斥存在 —— 有城市名时
+ * 城市名更准，不该再拿坐标去覆盖。
+ */
+const locatedCenter = ref<Location | null>(null)
 
 let controller: AbortController | null = null
 /** 请求序号：切类别时旧响应不得写入新列表 */
 let loadSeq = 0
 
-const effectiveCity = computed(() => locatedCity.value || props.city?.trim() || '')
+const origin = computed(() =>
+  resolveExploreOrigin(props.city, locatedCity.value, locatedCenter.value)
+)
+/** 有城市名或坐标任一即可检索（规则见 services/cityExploreOrigin） */
+const canExplore = computed(() => hasExploreOrigin(origin.value))
+/** 是否已经定位过（城市名或坐标任一即可），只影响按钮态 */
+const hasLocated = computed(() => Boolean(locatedCity.value || locatedCenter.value))
 
 const kindOptions = computed(() =>
   EXPLORE_KINDS.map((kind) => ({ value: kind, label: t(`home.explore.kind.${kind}`) }))
@@ -94,9 +108,17 @@ const categoryLabel = (spot: CitySpot): string => {
   return parts.length ? parts[parts.length - 1] : ''
 }
 
-const load = async (city: string, kind: ExploreKind) => {
-  // 没有城市就没有检索原点：不请求、不编造，直接显示「尚未确定城市」
-  if (!city) {
+/**
+ * 拉一次列表。检索原点二选一：城市名（更准）或定位坐标（地名查不到时兜底）。
+ *
+ * 城市名与坐标**不要同时发**：后端优先取坐标反查，多绕一跳还可能拿到
+ * 与城市名不一致的结果（契约 §5 的检索原点必须是城市中心）。
+ */
+const load = async (kind: ExploreKind) => {
+  const { city, center } = origin.value
+
+  // 既没城市名也没坐标 → 没有检索原点：不请求、不编造，直接显示「尚未确定城市」
+  if (!city && !center) {
     spots.value = []
     source.value = 'live'
     degradedReason.value = ''
@@ -111,7 +133,8 @@ const load = async (city: string, kind: ExploreKind) => {
 
   try {
     const result = await fetchCityExplore({
-      city,
+      city: city || undefined,
+      center: center ?? undefined,
       kind,
       limit: 12,
       signal: controller.signal,
@@ -137,19 +160,21 @@ const load = async (city: string, kind: ExploreKind) => {
 const handleKindChange = (kind: ExploreKind) => {
   if (kind === activeKind.value) return
   activeKind.value = kind
-  void load(effectiveCity.value, kind)
+  void load(kind)
 }
 
 /** 手动重试：空态里给一个「再试一次」，免得用户只能刷新整页 */
 const reload = () => {
-  void load(effectiveCity.value, activeKind.value)
+  void load(activeKind.value)
 }
 
 /**
  * 定位到「我的城市」。
  *
  * 定位失败不影响已有列表：用户可能只是想知道自己在哪，原来的城市数据仍然有效。
- * 逆地理编码只用于把城市名弄准，它失败就退回坐标反查（后端会按坐标解析城市）。
+ * 逆地理编码只用于把城市名弄准；查不到城市名（后端未配高德 Key 时必然如此）
+ * 就保留坐标，由后端按坐标反查城市 —— **结果一样要落到界面上**，
+ * 否则等于白跑一次请求（之前只写了 resolvedCity，列表被「尚未确定城市」挡住）。
  */
 const locateMyCity = async () => {
   if (locating.value) return
@@ -159,22 +184,15 @@ const locateMyCity = async () => {
     const position = await getCurrentLocation()
     const geo = await reverseGeocode(position.location.longitude, position.location.latitude)
     const city = geo?.city || geo?.province || ''
-    if (!city) {
-      // 地名查不到，但坐标是有效的：让后端按坐标解析城市（契约 §5 支持）
+    if (city) {
+      locatedCenter.value = null
+      locatedCity.value = city
+    } else {
+      // 地名查不到，但坐标有效：交给后端按坐标解析城市（契约 §5 支持）
       locatedCity.value = ''
-      const result = await fetchCityExplore({
-        center: position.location,
-        kind: activeKind.value,
-        limit: 12,
-      })
-      spots.value = result.spots
-      source.value = result.source
-      degradedReason.value = result.degradedReason ?? ''
-      resolvedCity.value = result.city?.name || ''
-      return
+      locatedCenter.value = position.location
     }
-    locatedCity.value = city
-    void load(city, activeKind.value)
+    // 两个 ref 都参与 watch，改动本身会触发重拉；这里不再重复请求一次
   } catch (err) {
     const kind = err instanceof LocateFailure ? err.kind : 'unavailable'
     locateError.value = kind
@@ -194,11 +212,11 @@ const openNavigation = async (spot: CitySpot) => {
   window.open(url, '_blank', 'noopener')
 }
 
-/** 城市变了（例如用户在首页改了目的地）就重新拉一次 */
+/** 城市/坐标变了（例如用户在首页改了目的地、或刚定位）就重新拉一次 */
 watch(
-  [() => props.city, () => locatedCity.value, () => activeKind.value],
-  ([city, located]) => {
-    void load((located || city || '').trim(), activeKind.value)
+  [() => props.city, () => locatedCity.value, () => locatedCenter.value, () => activeKind.value],
+  () => {
+    void load(activeKind.value)
   },
   { immediate: true }
 )
@@ -223,8 +241,8 @@ defineExpose({ reload })
       <n-button
         size="small"
         :loading="locating"
-        :type="locatedCity ? 'primary' : 'default'"
-        :ghost="!locatedCity"
+        :type="hasLocated ? 'primary' : 'default'"
+        :ghost="!hasLocated"
         @click="locateMyCity"
       >
         {{ locating ? t('home.explore.locating') : t('home.explore.locateAction') }}
@@ -251,7 +269,7 @@ defineExpose({ reload })
       </button>
     </div>
 
-    <p v-if="!effectiveCity" class="city-explore__hint">{{ t('home.explore.cityHint') }}</p>
+    <p v-if="!canExplore" class="city-explore__hint">{{ t('home.explore.cityHint') }}</p>
 
     <div v-else-if="loading" class="city-explore__state">
       <n-spin size="small" />

@@ -443,25 +443,24 @@ def parse_city_center(payload: Dict[str, Any]) -> Optional[CityCenter]:
     return CityCenter(name=name, location=location)
 
 
-def parse_reverse_city(payload: Dict[str, Any]) -> Optional[CityCenter]:
-    """geocoder/v1 响应（坐标 → 地址）→ CityCenter
+def parse_reverse_city_name(payload: Dict[str, Any]) -> Optional[str]:
+    """geocoder/v1 响应（坐标 → 地址）→ 城市名
 
     用于「我在哪座城市」：直辖市上游把 province/city 都填成「北京市」，
     取 city 即可；city 为空时退回 province。
+
+    **只返回城市名，不返回 CityCenter**：逆地理编码响应里的 `result.location`
+    就是**传入的坐标本身**，不是城市中心。拿它当检索原点会让「城市探索」
+    退化成「附近有什么」（§2 已负责），并且按第一个请求者的位置污染
+    同城所有人的 distance/score。城市中心必须再用城市名查一次（见
+    `TencentMapService._resolve_city`）。
     """
     parse_status(payload)
     result = payload.get("result") or {}
-    location = to_location(result.get("location"))
-    if location is None:
-        return None
-
     components = result.get("address_component") or {}
     city = str(components.get("city") or "").strip()
     province = str(components.get("province") or "").strip()
-    name = city or province
-    if not name:
-        return None
-    return CityCenter(name=name, location=location)
+    return city or province or None
 
 
 def merge_city_spots(

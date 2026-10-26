@@ -6,6 +6,7 @@ fixtures 是腾讯真实响应（已剔除 request_id），不是手写 mock —
 口径（region 检索不带 _distance、结果混着附属设施、同名他市行政区）只有真响应能暴露。
 """
 
+import asyncio
 import json
 import pathlib
 
@@ -42,11 +43,93 @@ def test_city_center_rejects_low_reliability():
     assert svc.parse_city_center(payload) is None
 
 
-def test_city_center_from_reverse_geocode():
-    """坐标 → 城市名，用于「我在哪座城市」"""
-    center = svc.parse_reverse_city(load("geocoder_reverse_ok.json"))
+def test_reverse_geocode_returns_city_name_only():
+    """坐标 → 城市名，用于「我在哪座城市」
+
+    只回名字不回坐标：逆地理编码的 `result.location` 是传入坐标本身，
+    不是城市中心，拿它当检索原点会污染 distance/score（契约 §5）。
+    """
+    assert svc.parse_reverse_city_name(load("geocoder_reverse_ok.json")) == "杭州市"
+
+
+def test_reverse_geocode_falls_back_to_province():
+    """直辖市/城市名为空时退回 province"""
+    payload = load("geocoder_reverse_ok.json")
+    payload["result"]["address_component"]["city"] = ""
+    payload["result"]["address_component"]["province"] = "北京市"
+    assert svc.parse_reverse_city_name(payload) == "北京市"
+
+
+def test_reverse_geocode_without_city_name_returns_none():
+    payload = load("geocoder_reverse_ok.json")
+    payload["result"]["address_component"]["city"] = ""
+    payload["result"]["address_component"]["province"] = ""
+    assert svc.parse_reverse_city_name(payload) is None
+
+
+def test_resolve_city_from_coord_uses_city_center_not_user_location():
+    """坐标路径必须两跳：反查城市名 → 再查城市中心
+
+    直接拿逆地理编码的 location 当原点，会让同城所有用户共用第一个请求者的
+    位置（缓存键只有 (城市, 类别)），并把「城市探索」退化成「附近」。
+    """
+    from app.services.tencent_map_client import TencentMapService
+
+    reverse_payload = load("geocoder_reverse_ok.json")
+    center_payload = load("geocoder_city_ok.json")
+    calls = []
+
+    service = TencentMapService(key="dummy")
+
+    async def fake_get(path, params):
+        calls.append((path, dict(params)))
+        if "location" in params:
+            return reverse_payload
+        return center_payload
+
+    service._get = fake_get  # type: ignore[method-assign]
+
+    # 用户坐标故意选在离杭州中心 12 km 外的位置
+    center = asyncio.run(service._resolve_city(None, 120.300000, 30.350000))
+
     assert center is not None
     assert center.name == "杭州市"
+    # 原点是城市中心（geocoder_city_ok 的坐标），不是传进来的用户坐标
+    assert center.location.longitude == pytest.approx(120.210792, abs=1e-6)
+    assert center.location.latitude == pytest.approx(30.246026, abs=1e-6)
+    assert calls[0][1].get("location") == "30.35,120.3"
+    assert calls[1][1].get("address") == "杭州市"
+
+
+def test_resolve_city_prefers_city_name_over_coord():
+    """城市名与坐标同传时以城市名为准：少打一次上游，也不会反查到别的城市
+
+    小程序主流程就是两个都传，之前后端优先取坐标，等于恒走反查路径。
+    """
+    from app.services.tencent_map_client import TencentMapService
+
+    calls = []
+    service = TencentMapService(key="dummy")
+
+    async def fake_get(path, params):
+        calls.append((path, dict(params)))
+        return load("geocoder_city_ok.json")
+
+    service._get = fake_get  # type: ignore[method-assign]
+
+    center = asyncio.run(service._resolve_city("杭州", 116.407400, 39.904200))
+
+    assert center is not None and center.name == "杭州市"
+    assert len(calls) == 1, "有城市名时不该再按坐标反查"
+    assert calls[0][1].get("address") == "杭州"
+
+
+def test_resolve_city_without_name_and_coord_returns_none():
+    """既没城市名也没坐标 → 没有检索原点，不猜一个城市"""
+    from app.services.tencent_map_client import TencentMapService
+
+    service = TencentMapService(key="dummy")
+    assert asyncio.run(service._resolve_city(None, None, None)) is None
 
 
 def test_city_center_missing_location_returns_none():
