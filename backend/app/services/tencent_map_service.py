@@ -14,6 +14,9 @@
 from typing import Any, Dict, List, Optional, Tuple
 
 from ..models.schemas import (
+    CityCenter,
+    CityExploreResponse,
+    CitySpot,
     Location,
     NearbyStation,
     NearbyStationResponse,
@@ -272,7 +275,6 @@ def build_nav_url(
 
 
 # ============ 地理编码（原 poll-160 的 geocode，收编入契约）============
-
 def parse_geocode(payload: Dict[str, Any]) -> Optional[Location]:
     """geocoder/v1 响应 → Location
 
@@ -306,3 +308,209 @@ def parse_place_search(payload: Dict[str, Any]) -> List[Dict[str, Any]]:
             }
         )
     return out
+
+
+# ============ 城市探索（契约 §5）============
+#
+# 与 §2「附近站点」的区别：那边是米级半径内的地铁/公交站，这边是**整座城市**的
+# 去处检索（景点/美食/公园/博物馆），检索边界是 region(城市,0) 而不是 nearby。
+#
+# 三个上游口径（均已用真实 Key 实测）：
+#   1. region 检索的 _distance 恒为 None —— 距离必须我方按城市中心自己算
+#   2. region 检索不保证按任何有意义的顺序返回，页内顺序是 POI 索引序，
+#      直接取前 20 条会得到「按名字拼音排列」这种没有价值的结果
+#   3. 结果里混有「XX服务中心 / 售票处 / 停车场」这类附属设施，以及
+#      「杭州道街道」这种同名他市行政区，必须过滤，否则城市探索列表会被垃圾填满
+
+# 类别 → 上游关键词。一个类别用多个关键词是因为 keyword 是单串精确匹配（§1.6），
+# 实测「景点」与「风景名胜」各自能捞出不同的 POI，必须都打一遍再按 id 去重。
+CITY_EXPLORE_KEYWORDS: Dict[str, List[str]] = {
+    "spot": ["景点", "风景名胜"],
+    "food": ["美食"],
+    "park": ["公园"],
+    "museum": ["博物馆"],
+}
+
+CITY_EXPLORE_KINDS = tuple(CITY_EXPLORE_KEYWORDS)
+
+# 附属设施/服务点：不是「去处」，出现在城市探索列表里只会让人以为景点就长这样
+_JUNK_TITLE_HINTS = (
+    "服务中心",
+    "游客中心",
+    "售票",
+    "停车场",
+    "入口",
+    "出口",
+    "厕所",
+    "洗手间",
+    "母婴室",
+    "医务室",
+    "警务",
+    "派出所",
+    "办公室",
+    "管理处",
+    "管理所",
+    "咨询处",
+    "志愿者",
+    "检票",
+    "公交站",
+    "地铁站",
+    "充电站",
+    "垃圾分类",
+    "驿站",
+    "指示牌",
+)
+
+# 类别加分：上游 category 的语义等级比名字可靠（「国家级景点」确实比「其它旅游景点」值得去）
+_CATEGORY_BOOST = (
+    ("世界遗产", 34.0),
+    ("国家级景点", 30.0),
+    ("博物馆", 24.0),
+    ("风景名胜", 20.0),
+    ("寺庙", 12.0),
+    ("公园", 10.0),
+)
+
+# 距离衰减：exp(-d/20km)。选 20 km 是因为实测同城内「值得去」的地方常落在
+# 5–20 km（杭州雷峰塔 6.2 km、西湖 9.0 km），而 100 km 外的县市景区不该压过市区景点；
+# 同时衰减不能太陡，否则阿勒泰这类地广人稀的城市会把所有真景区都排到后面。
+_DISTANCE_DECAY_KM = 20.0
+_DISTANCE_WEIGHT = 26.0
+
+
+def haversine_meters(a: Location, b: Location) -> float:
+    """两点球面距离（米）。上游 region 检索不给距离，只能自己算。"""
+    import math
+
+    radius = 6371000.0
+    lat1 = math.radians(a.latitude)
+    lat2 = math.radians(b.latitude)
+    dlat = lat2 - lat1
+    dlng = math.radians(b.longitude - a.longitude)
+    h = math.sin(dlat / 2) ** 2 + math.cos(lat1) * math.cos(lat2) * math.sin(dlng / 2) ** 2
+    return 2 * radius * math.asin(min(1.0, math.sqrt(h)))
+
+
+def _is_junk_poi(title: str, category: str) -> bool:
+    """附属设施 / 非去处过滤"""
+    if any(hint in title for hint in _JUNK_TITLE_HINTS):
+        return True
+    # 交通设施整类排除：地铁站/公交站是 §2 的职责，不属于「城市探索」
+    return "交通设施" in category
+
+
+def score_city_spot(category: str, distance_m: int) -> float:
+    """推荐分：类别等级加分 + 距离衰减加分。
+
+    分两层而不是简单按距离排：只看距离会把「市中心最近的公园」排第一，
+    而用户点开「城市探索」想看的是这座城市**值得去**的地方。
+    """
+    import math
+
+    score = 0.0
+    for token, weight in _CATEGORY_BOOST:
+        if token in category:
+            score += weight
+    score += _DISTANCE_WEIGHT * math.exp(-(distance_m / 1000.0) / _DISTANCE_DECAY_KM)
+    return round(score, 2)
+
+
+def parse_city_center(payload: Dict[str, Any]) -> Optional[CityCenter]:
+    """geocoder/v1 响应（地址 → 坐标）→ CityCenter
+
+    `reliability` < 7 表示上游只是模糊匹配（例如把「杭州道街道」当成杭州），
+    这种结果宁可不给，也不能拿一个错的城市中心去检索全城 POI。
+    """
+    parse_status(payload)
+    result = payload.get("result") or {}
+    location = to_location(result.get("location"))
+    if location is None:
+        return None
+
+    try:
+        reliability = int(result.get("reliability") or 0)
+    except (TypeError, ValueError):
+        reliability = 0
+    if reliability and reliability < 7:
+        return None
+
+    components = result.get("address_components") or {}
+    city = str(components.get("city") or "").strip()
+    province = str(components.get("province") or "").strip()
+    name = city or province
+    if not name:
+        return None
+    return CityCenter(name=name, location=location)
+
+
+def parse_reverse_city(payload: Dict[str, Any]) -> Optional[CityCenter]:
+    """geocoder/v1 响应（坐标 → 地址）→ CityCenter
+
+    用于「我在哪座城市」：直辖市上游把 province/city 都填成「北京市」，
+    取 city 即可；city 为空时退回 province。
+    """
+    parse_status(payload)
+    result = payload.get("result") or {}
+    location = to_location(result.get("location"))
+    if location is None:
+        return None
+
+    components = result.get("address_component") or {}
+    city = str(components.get("city") or "").strip()
+    province = str(components.get("province") or "").strip()
+    name = city or province
+    if not name:
+        return None
+    return CityCenter(name=name, location=location)
+
+
+def merge_city_spots(
+    payloads: List[Dict[str, Any]],
+    kind: str,
+    center: Location,
+    limit: int = 20,
+) -> List[CitySpot]:
+    """把同一类别的多次检索结果合并去重、打分、排序。
+
+    去重按上游 POI id —— 实测「景点」和「风景名胜」两个关键词会捞到同一批 POI，
+    按名字去重会把「西湖风景名胜区」和「西湖风景名胜区-断桥」当成两条不同的地方
+    （它们确实是两个 POI，名字也不同），所以只能按 id。
+    """
+    merged: Dict[str, CitySpot] = {}
+
+    for payload in payloads:
+        parse_status(payload)
+        for poi in payload.get("data") or []:
+            location = to_location(poi.get("location"))
+            if location is None:
+                continue
+            title = str(poi.get("title") or "").strip()
+            category = str(poi.get("category") or "").strip()
+            if not title or _is_junk_poi(title, category):
+                continue
+
+            # 上游 _distance 在 region 检索下恒为 None，这里一律按城市中心自算
+            distance = int(round(haversine_meters(center, location)))
+            poi_id = str(poi.get("id") or f"{title}@{distance}")
+            if poi_id in merged:
+                continue
+
+            merged[poi_id] = CitySpot(
+                id=poi_id,
+                name=title,
+                category=category,
+                kind=kind,
+                address=str(poi.get("address") or ""),
+                location=location,
+                distance=distance,
+                score=score_city_spot(category, distance),
+            )
+
+    return sorted(merged.values(), key=lambda s: (-s.score, s.distance))[:limit]
+
+
+def degraded_city_explore(message: str) -> CityExploreResponse:
+    """降级响应：degraded=true 且 data=[]，绝不伪造地点（与 §2 同一原则）"""
+    return CityExploreResponse(
+        success=False, degraded=True, message=message, city=None, data=[]
+    )

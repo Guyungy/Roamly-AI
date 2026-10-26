@@ -135,6 +135,58 @@ export async function getJson<T>(path: string, options: RequestOptions = {}): Pr
 }
 
 /**
+ * 发一次 GET 并返回**完整信封**（不只是 data）。
+ *
+ * 绝大多数接口只需要 data，用 `getJson` 即可。少数接口在信封上还挂着与 data 平级的
+ * 业务字段 —— 契约 §5 的 `city`（解析出的城市中心）就是这种，它不能塞进 data
+ * （data 是地点数组）。这类接口用本函数，自己取需要的那几层。
+ *
+ * 成功/降级/失败的判定与 `getJson` 完全一致，只是把 data 一起返回，不丢弃任何一层。
+ */
+export async function getEnvelope<T>(
+  path: string,
+  options: RequestOptions = {}
+): Promise<ApiEnvelope<T>> {
+  const url = buildUrl(path, options.query)
+
+  let resp: Response
+  try {
+    resp = await fetch(url, { signal: options.signal })
+  } catch (err) {
+    if (isAbortError(err)) throw new ApiFailure('aborted', `${path} 请求被取消`)
+    throw new ApiFailure('network', `${path} 请求失败: ${(err as Error)?.message ?? err}`)
+  }
+
+  if (!resp.ok) {
+    throw new ApiFailure('http', `${path} 返回 ${resp.status}`, { status: resp.status })
+  }
+
+  let payload: ApiEnvelope<T>
+  try {
+    payload = (await resp.json()) as ApiEnvelope<T>
+  } catch (err) {
+    if (isAbortError(err)) throw new ApiFailure('aborted', `${path} 请求被取消`)
+    throw new ApiFailure('malformed', `${path} 响应不是合法 JSON`)
+  }
+
+  if (!payload || typeof payload !== 'object') {
+    throw new ApiFailure('malformed', `${path} 响应结构异常`)
+  }
+
+  if (payload.degraded) {
+    throw new ApiFailure('degraded', payload.message || `${path} 上游降级`, {
+      degradedReason: payload.message || '',
+    })
+  }
+
+  if (!payload.success) {
+    throw new ApiFailure('malformed', payload.message || `${path} 未返回成功标记`)
+  }
+
+  return payload
+}
+
+/**
  * 契约 §1.1：全项目统一 `Location{longitude, latitude}`。
  * 腾讯上游用 `"lat,lng"` 字符串顺序，与 Location 字段顺序**相反** —— 这个转换
  * 只在后端做（`to_coord`），前端一旦自己拼就会出现串位，所以这里只提供

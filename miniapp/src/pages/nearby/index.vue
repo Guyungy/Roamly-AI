@@ -40,6 +40,67 @@
       </wd-card>
     </view>
 
+    <!--
+      当前城市探索（契约 §5）：按类别看这座城市值得去的地方。
+      城市取上面定位到的当前城市；没定位成功就不展示 —— 没有城市名就没有检索原点，
+      拿一个默认城市去查，列表看起来完全正常，用户不会察觉。
+    -->
+    <view class="form-section" v-if="currentCity">
+      <view class="section-header">
+        <wd-icon name="search" size="18px" />
+        <text class="section-title">探索{{ currentCityName || '这座城市' }}</text>
+      </view>
+
+      <scroll-view scroll-x class="kind-scroll">
+        <view class="kind-list">
+          <wd-tag
+            v-for="k in exploreKindOptions"
+            :key="k.value"
+            round
+            size="medium"
+            :type="exploreKind === k.value ? 'primary' : 'default'"
+            :plain="exploreKind !== k.value"
+            custom-class="kind-tag"
+            @click="selectExploreKind(k.value)"
+          >
+            {{ k.label }}
+          </wd-tag>
+        </view>
+      </scroll-view>
+
+      <view v-if="exploreLoading" class="explore-state">
+        <text class="explore-state__text">正在检索城市好去处…</text>
+      </view>
+
+      <view v-else-if="exploreSpots.length === 0" class="explore-state">
+        <text class="explore-state__text">
+          {{ exploreSource === 'degraded' ? '后端已降级，暂时无法获取城市探索数据' : '这座城市该类别暂无可推荐的地方' }}
+        </text>
+        <text v-if="exploreDegradedReason" class="explore-state__reason">{{ exploreDegradedReason }}</text>
+      </view>
+
+      <view v-else class="explore-list">
+        <view
+          v-for="spot in exploreSpots"
+          :key="spot.id"
+          class="explore-item"
+          @tap="openSpotNavigation(spot)"
+        >
+          <view class="explore-item__main">
+            <text class="explore-item__name">{{ spot.name }}</text>
+            <view class="explore-item__meta">
+              <text v-if="spot.category" class="explore-item__cat">{{ shortCategory(spot.category) }}</text>
+              <text class="explore-item__dist">{{ formatDistance(spot.distance) }}</text>
+            </view>
+          </view>
+          <text class="explore-item__nav">导航 ›</text>
+        </view>
+      </view>
+
+      <!-- 来源如实标注：四态分开说，不能把 mock 说成缓存、把降级说成空 -->
+      <text v-if="exploreSourceNote" class="explore-source">{{ exploreSourceNote }}</text>
+    </view>
+
     <view class="form-section">
       <view class="section-header">
         <wd-icon name="time" size="18px" />
@@ -150,7 +211,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { onShow, onShareAppMessage } from '@dcloudio/uni-app'
 import LoadingOverlay from '@/components/LoadingOverlay.vue'
 import QuotaWall from '@/components/QuotaWall.vue'
@@ -158,7 +219,13 @@ import { useTripStore } from '@/stores/trip'
 import { useQuotaStore } from '@/stores/quota'
 import { useQuotaAction } from '@/composables/useQuotaAction'
 import { usePlanSubmit } from '@/composables/usePlanSubmit'
-import { reverseGeocode as apiReverseGeocode } from '@/services/api'
+import {
+  reverseGeocode as apiReverseGeocode,
+  fetchCityExplore,
+  type CitySpot,
+  type CityExploreSource,
+  type ExploreKind,
+} from '@/services/api'
 import type { TripFormData } from '@/types'
 
 const tripStore = useTripStore()
@@ -167,6 +234,10 @@ const { showQuotaWall, checkQuota, handleWatchAd, handleInvite } = useQuotaActio
 const { submitPlan } = usePlanSubmit()
 
 const currentCity = ref('')
+/** 真实城市名（逆地理编码结果）。与 currentCity 分开：后者是展示文案，可能是「当前位置」 */
+const currentCityName = ref('')
+/** 定位坐标（GCJ-02）。城市名查不到时，城市探索用它让后端自己解析城市 */
+const currentCoords = ref<{ longitude: number; latitude: number } | null>(null)
 const locating = ref(false)
 const selectedDuration = ref<'half' | 'full'>('half')
 const selectedCategories = ref<string[]>([])
@@ -286,11 +357,21 @@ async function getLocation() {
     ])
 
     // 2. 通过后端 API 逆地理编码（Key 安全存放在后端）
+    //
+    // currentCity 是**展示文案**，查不到时兜底成「当前位置」；它不能拿去当城市名检索
+    // —— 把「当前位置」四个字发给上游只会得到一个解析不了的查询。
+    // 所以真实城市名单独存 currentCityName，查不到时留空，探索改用坐标（契约 §5 支持）。
+    currentCoords.value = {
+      longitude: locationRes.longitude,
+      latitude: locationRes.latitude,
+    }
     try {
       const geo = await apiReverseGeocode(locationRes.latitude, locationRes.longitude)
+      currentCityName.value = geo.city || geo.province || ''
       currentCity.value = geo.city || geo.province || '当前位置'
     } catch (geoErr) {
       console.warn('逆地理编码失败:', geoErr)
+      currentCityName.value = ''
       currentCity.value = '当前位置'
     }
   } catch (err: any) {
@@ -300,6 +381,107 @@ async function getLocation() {
     locating.value = false
   }
 }
+
+/* ---------- 当前城市探索（契约 §5） ---------- */
+
+const exploreKind = ref<ExploreKind>('spot')
+const exploreSpots = ref<CitySpot[]>([])
+const exploreSource = ref<CityExploreSource>('live')
+const exploreDegradedReason = ref('')
+const exploreLoading = ref(false)
+/** 请求序号：切类别时旧响应不得写入新列表 */
+let exploreSeq = 0
+
+const exploreKindOptions: { value: ExploreKind; label: string }[] = [
+  { value: 'spot', label: '景点' },
+  { value: 'food', label: '美食' },
+  { value: 'park', label: '公园' },
+  { value: 'museum', label: '博物馆' },
+]
+
+const exploreSourceNote = computed(() => {
+  // 降级且空列表时由空态说明，同一件事不说两遍
+  if (exploreSource.value === 'degraded' && exploreSpots.value.length === 0) return ''
+  switch (exploreSource.value) {
+    case 'cache':
+      return '网络异常，已展示最近一次缓存的城市探索结果'
+    case 'degraded':
+      return '后端已降级（上游位置服务暂不可用），未展示任何地点'
+    case 'mock':
+      return '展示内置演示地点（后端未接通或上游暂不可用）'
+    default:
+      return ''
+  }
+})
+
+/** 上游 category 是「大类:中类:小类」，只取末级 —— 大类几乎不带信息量 */
+function shortCategory(category: string): string {
+  const parts = category.split(':').map((p) => p.trim()).filter(Boolean)
+  return parts.length ? parts[parts.length - 1] : ''
+}
+
+function formatDistance(meters: number): string {
+  if (!meters) return '距离未知'
+  return `距市中心 ${(meters / 1000).toFixed(1)} 公里`
+}
+
+async function loadCityExplore() {
+  // 有城市名就按城市名查；没有（逆地理编码失败）但有坐标时按坐标查，
+  // 让后端解析城市 —— 绝不把「当前位置」四个字当城市名发给上游。
+  const city = currentCityName.value
+  const center = currentCoords.value
+  if (!city && !center) {
+    exploreSpots.value = []
+    return
+  }
+
+  const seq = ++exploreSeq
+  exploreLoading.value = true
+  try {
+    const result = await fetchCityExplore({
+      city: city || undefined,
+      center: center || undefined,
+      kind: exploreKind.value,
+      limit: 10,
+    })
+    if (seq !== exploreSeq) return
+    exploreSpots.value = result.spots
+    exploreSource.value = result.source
+    exploreDegradedReason.value = result.degradedReason || ''
+  } catch {
+    if (seq !== exploreSeq) return
+    exploreSpots.value = []
+    exploreSource.value = 'live'
+    exploreDegradedReason.value = ''
+  } finally {
+    if (seq === exploreSeq) exploreLoading.value = false
+  }
+}
+
+function selectExploreKind(kind: ExploreKind) {
+  if (kind === exploreKind.value) return
+  exploreKind.value = kind
+  void loadCityExplore()
+}
+
+/** 导航走小程序内置地图，与附近出行「说走就走」的语境一致 */
+function openSpotNavigation(spot: CitySpot) {
+  uni.openLocation({
+    latitude: spot.location.latitude,
+    longitude: spot.location.longitude,
+    name: spot.name,
+    address: spot.address || spot.name,
+    scale: 16,
+    fail: () => {
+      uni.showToast({ title: '无法打开地图', icon: 'none' })
+    },
+  })
+}
+
+// 定位到城市后自动拉一次；换城市（重新定位）也重拉
+watch([currentCity, currentCityName, currentCoords], ([city]) => {
+  if (city) void loadCityExplore()
+})
 
 /** 引导用户前往系统设置开启定位权限 */
 function promptOpenSettings() {
@@ -342,6 +524,9 @@ function promptManualInput() {
     success: (r: any) => {
       if (r.confirm && r.content) {
         currentCity.value = r.content.trim()
+        // 手动输入的是城市名，可以同时当检索城市用；坐标来源已失效，清掉
+        currentCityName.value = currentCity.value
+        currentCoords.value = null
       }
     }
   })
@@ -349,6 +534,8 @@ function promptManualInput() {
 
 function refreshLocation() {
   currentCity.value = ''
+  currentCityName.value = ''
+  currentCoords.value = null
   getLocation()
 }
 
@@ -618,6 +805,109 @@ async function handleSubmit() {
 
 .suggest-tag {
   flex-shrink: 0;
+}
+
+/* 城市探索 */
+.kind-scroll {
+  white-space: nowrap;
+  margin-bottom: 20rpx;
+}
+
+.kind-list {
+  display: flex;
+  gap: 16rpx;
+  padding: 4rpx 0;
+}
+
+.kind-tag {
+  flex-shrink: 0;
+}
+
+.explore-state {
+  display: flex;
+  flex-direction: column;
+  gap: 8rpx;
+  padding: 28rpx 24rpx;
+  border-radius: 20rpx;
+  background: #FFFFFF;
+}
+
+.explore-state__text {
+  font-size: 26rpx;
+  color: #6B7280;
+}
+
+.explore-state__reason {
+  font-size: 22rpx;
+  color: #9CA3AF;
+}
+
+.explore-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+}
+
+.explore-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16rpx;
+  padding: 24rpx;
+  border-radius: 20rpx;
+  background: #FFFFFF;
+  box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.03);
+}
+
+.explore-item__main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8rpx;
+}
+
+.explore-item__name {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #333333;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.explore-item__meta {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  min-width: 0;
+}
+
+.explore-item__cat {
+  flex-shrink: 0;
+  font-size: 20rpx;
+  color: #6B7280;
+  padding: 2rpx 10rpx;
+  border-radius: 8rpx;
+  background: #F3F4F6;
+}
+
+.explore-item__dist {
+  font-size: 22rpx;
+  color: #9CA3AF;
+}
+
+.explore-item__nav {
+  flex-shrink: 0;
+  font-size: 24rpx;
+  color: #4EADBD;
+}
+
+.explore-source {
+  display: block;
+  margin-top: 16rpx;
+  font-size: 22rpx;
+  color: #9CA3AF;
 }
 
 /* Submit */

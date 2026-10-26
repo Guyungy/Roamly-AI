@@ -9,6 +9,7 @@ from typing import Optional
 from fastapi import APIRouter, HTTPException, Query
 
 from ...models.schemas import (
+    CityExploreResponse,
     Location,
     NavLinkResponse,
     NearbyStationResponse,
@@ -36,6 +37,37 @@ async def nearby_station(
     service = get_tencent_map_service()
     try:
         return await service.nearby_station(longitude, latitude, radius, keyword, city)
+    except TencentError as e:
+        if e.is_bad_param:
+            raise HTTPException(status_code=400, detail=f"参数错误: {e.message}")
+        raise HTTPException(status_code=502, detail=f"上游错误: {e.message}")
+
+
+@router.get(
+    "/city-explore",
+    response_model=CityExploreResponse,
+    summary="当前城市探索",
+    description=(
+        "按城市检索值得去的地方（景点/美食/公园/博物馆），按推荐分降序返回。"
+        "城市可用 `city` 名或 `longitude`+`latitude` 坐标指定；Key 缺失或城市无法解析时降级返回空列表。"
+    ),
+)
+async def city_explore(
+    kind: str = Query(
+        "spot",
+        pattern="^(spot|food|park|museum)$",
+        description="探索类别: spot 景点 / food 美食 / park 公园 / museum 博物馆",
+    ),
+    city: Optional[str] = Query(None, description="城市名，如 '杭州'；给了坐标时可省略"),
+    longitude: Optional[float] = Query(None, ge=-180, le=180, description="定位经度(GCJ02)"),
+    latitude: Optional[float] = Query(None, ge=-90, le=90, description="定位纬度(GCJ02)"),
+    limit: int = Query(20, ge=1, le=50, description="返回条数上限"),
+):
+    service = get_tencent_map_service()
+    try:
+        return await service.city_explore(
+            kind=kind, city=city, longitude=longitude, latitude=latitude, limit=limit
+        )
     except TencentError as e:
         if e.is_bad_param:
             raise HTTPException(status_code=400, detail=f"参数错误: {e.message}")

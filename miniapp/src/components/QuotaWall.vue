@@ -1,5 +1,10 @@
 <template>
-  <wd-popup v-model="visible" position="bottom" :safe-area-inset-bottom="true" custom-style="border-radius: 40rpx 40rpx 0 0; background: #FFFFFF;" :close-on-click-modal="true" @close="$emit('close')">
+  <!--
+    wd-popup 的 visible 不能写 v-model：那是往 prop 上写值，Vue 编译期直接报
+    「v-model cannot be used on a prop」，整个页面 500。改成单向绑定 + 监听关闭事件，
+    显隐由父层的 showQuotaWall 决定。
+  -->
+  <wd-popup :model-value="visible" position="bottom" :safe-area-inset-bottom="true" custom-style="border-radius: 40rpx 40rpx 0 0; background: #FFFFFF;" :close-on-click-modal="true" @close="$emit('close')">
     <view class="popup-body">
       <view class="popup-header">
         <text class="popup-emoji">🎒</text>

@@ -1,0 +1,25 @@
+{
+  "status": 0,
+  "message": "Success",
+  "result": {
+    "title": "杭州市",
+    "location": {
+      "lng": 120.210792,
+      "lat": 30.246026
+    },
+    "ad_info": {
+      "adcode": "330100"
+    },
+    "address_components": {
+      "province": "浙江省",
+      "city": "杭州市",
+      "district": "",
+      "street": "",
+      "street_number": ""
+    },
+    "similarity": 0.99,
+    "deviation": 1000,
+    "reliability": 7,
+    "level": 1
+  }
+}

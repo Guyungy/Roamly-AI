@@ -124,6 +124,38 @@
       "generateSuccess": "旅行计划生成成功!",
       "generateFailed": "生成失败",
       "generateRetry": "生成旅行计划失败，请稍后重试"
+    },
+    "explore": {
+      "title": "探索当前城市",
+      "subtitle": "按类别看看这座城市值得去的地方",
+      "locateAction": "定位到我的城市",
+      "locating": "定位中…",
+      "retry": "重试",
+      "kind": {
+        "spot": "景点",
+        "food": "美食",
+        "park": "公园",
+        "museum": "博物馆"
+      },
+      "loading": "正在检索城市好去处…",
+      "empty": "这座城市该类别暂无可推荐的地方",
+      "loadFailed": "城市探索加载失败，请稍后重试",
+      "degradedEmpty": "后端已降级，暂时无法获取城市探索数据",
+      "fromCache": "网络异常，已展示最近一次缓存的城市探索结果",
+      "fromDegraded": "后端已降级（上游位置服务暂不可用），未展示任何地点",
+      "fromMock": "展示内置演示地点（后端未接通或上游暂不可用）",
+      "cityUnknown": "尚未确定城市",
+      "cityHint": "城市来自行程目的地，或点「定位到我的城市」",
+      "distance": "距市中心 {km} 公里",
+      "unknownDistance": "距离未知",
+      "navAction": "导航",
+      "locate": {
+        "unsupported": "当前浏览器不支持定位，请直接使用行程里的城市",
+        "insecure": "定位需要 HTTPS 或 localhost 环境，当前页面无法获取位置",
+        "denied": "定位权限被拒绝，请在浏览器地址栏的站点设置里允许位置权限后重试",
+        "unavailable": "暂时无法获取位置（定位服务不可用），请直接使用行程里的城市",
+        "timeout": "定位超时，请重试或直接使用行程里的城市"
+      }
     }
   },
   "result": {
