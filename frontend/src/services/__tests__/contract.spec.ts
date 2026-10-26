@@ -8,7 +8,7 @@
  * 对象，后端单测发现不了前端 `Array.isArray` 会静默失败——两边各测一遍才算闭环。
  *
  * fixtures 复用 `backend/tests/fixtures/tencent/` 的真实腾讯响应（已剔除 polyline），
- * 前端断言的是「后端按契约适配后」的形状（docs/r1/CONTRACT.md §2–§4 的示例）。
+ * 前端断言的是「后端按契约适配后」的形状（docs/r1/CONTRACT.md §2–§5 的示例）。
  */
 
 import { beforeEach, describe, expect, it, vi } from 'vitest'

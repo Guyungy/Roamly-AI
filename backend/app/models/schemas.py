@@ -303,6 +303,37 @@ class NavLinkResponse(BaseModel):
     data: Optional[NavLink] = Field(default=None, description="导航链接")
 
 
+class CitySpot(BaseModel):
+    """城市探索的一处去处（R1 契约 §5）"""
+    id: str = Field(default="", description="腾讯 POI ID")
+    name: str = Field(..., description="地点名称")
+    category: str = Field(default="", description="上游 category，如 '旅游景点:国家级景点'")
+    kind: str = Field(default="other", description="归一化类型: spot/food/park/museum")
+    address: str = Field(default="", description="上游 address")
+    location: Location = Field(..., description="坐标(GCJ02)")
+    distance: int = Field(default=0, ge=0, description="与城市中心的直线距离(米)")
+    score: float = Field(default=0.0, description="推荐分，降序排列依据")
+
+
+class CityCenter(BaseModel):
+    """城市中心（契约 §5）—— 城市名解析出来的检索原点"""
+    name: str = Field(..., description="规范化城市名，如 '杭州市'")
+    location: Location = Field(..., description="城市中心坐标(GCJ02)")
+
+
+class CityExploreResponse(BaseModel):
+    """当前城市探索响应（R1 契约 §5）
+
+    data 恒为数组，与 §2 一致：前端以 Array.isArray 判定。
+    降级时 degraded=true 且 data=[]，绝不伪造地点。
+    """
+    success: bool = Field(..., description="是否成功")
+    degraded: bool = Field(default=False, description="是否降级(Key 缺失/上游失败/城市无法解析)")
+    message: str = Field(default="", description="消息")
+    city: Optional[CityCenter] = Field(default=None, description="解析出的城市中心，降级时为 None")
+    data: List[CitySpot] = Field(default=[], description="去处列表(按 score 降序)")
+
+
 # ============ 错误响应 ============
 
 class ErrorResponse(BaseModel):

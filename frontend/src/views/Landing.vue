@@ -250,6 +250,13 @@
       </div>
     </section>
 
+    <!--
+      当前城市探索：按类别看这座城市值得去的地方。
+      城市取首页填的目的地；用户也可以点面板里的「定位到我的城市」改用当前位置。
+      数据走 /api/map/city-explore（契约 §5），失败时降级到缓存或内置演示数据并如实标注。
+    -->
+    <CityExplorePanel :city="formData.city" />
+
     <MyTrips ref="myTripsRef" @open-trip="handleOpenTrip" @auth-required="openAuth" />
 
     <CloudAuthModal v-model:open="authOpen" @success="handleAuthSuccess" />
@@ -270,6 +277,7 @@ import { useTripStore } from '@/stores/trip'
 import { useAuthStore } from '@/stores/auth'
 import { confirmDialog, feedback } from '@/utils/feedback'
 import NavBar from '@/components/NavBar.vue'
+import CityExplorePanel from '@/components/CityExplorePanel.vue'
 import MyTrips from '@/components/MyTrips.vue'
 import CloudAuthModal from '@/components/CloudAuthModal.vue'
 import type { TripFormData, TripPlan } from '@/types'

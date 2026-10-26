@@ -275,15 +275,18 @@
             </div>
 
             <!--
-              附近站点：按"第几天 · 景点"切换查看中心，列出该点附近的
-              地铁/公交站 + 步行可达提示；点击站点会把地图镜头移过去。
+              附近站点：按"第几天 · 景点"切换查看中心，也可切到「我的位置」——
+              浏览器定位拿到的是 WGS-84，service 层已转成契约要求的 GCJ-02，
+              这里拿到的坐标可以直接用。
               数据走后端 /api/map/nearby-station，失败时降级到缓存或内置演示数据。
             -->
             <NearbyStationPanel
-              v-if="tripPlan && stationCenters.length"
+              v-if="tripPlan"
               :centers="stationCenters"
+              allow-current-location
               class="map-stations"
               @focus="handleStationFocus"
+              @locate="handleLocate"
             />
           </div>
         </section>
@@ -690,6 +693,7 @@ import NavBar from '@/components/NavBar.vue'
 import OverviewAttractionCard from '@/components/OverviewAttractionCard.vue'
 import NearbyStationPanel from '@/components/NearbyStationPanel.vue'
 import type { StationView } from '@/services/nearbyStation'
+import type { CurrentPosition } from '@/services/geolocation'
 import AIChat from '@/components/AIChat.vue'
 import NavButton from '@/components/NavButton.vue'
 import { fetchNavLinks, type NavTravelMode } from '@/services/navLink'
@@ -748,6 +752,10 @@ let overviewSwiper: Swiper | null = null
 /* 站点聚焦留下的临时标记/信息窗：销毁或下一次聚焦时清掉 */
 let stationOverlays: any[] = []
 let stationWindow: any = null
+/* 「我的位置」的圆点与精度圈，同理，每次定位/销毁时清掉 */
+let locateOverlays: any[] = []
+/* 地图还没就绪时收到的定位结果，initMap 完成后补画 */
+let lastLocatedPosition: CurrentPosition | null = null
 const STATION_FOCUS_ZOOM = 15
 
 /**
@@ -764,6 +772,8 @@ const destroyMap = () => {
   // 站点聚焦留下的临时标记/信息窗也一并清掉
   stationOverlays = []
   stationWindow = null
+  // 「我的位置」的圆点与精度圈同样依赖地图实例
+  locateOverlays = []
   dayRouteSummaries.value = []
 }
 
@@ -892,8 +902,80 @@ const handleStationFocus = (station: StationView) => {
   feedback.info(t('result.station.focus'))
 }
 
-const buildStationBubble = (station: StationView): string => {
-  const typeLabel = station.type === 'subway' ? t('result.station.subway') : t('result.station.bus')
+/*
+ * 定位到「我的位置」：在地图上落一个蓝色圆点 + 精度圈，并把镜头移过去。
+ *
+ * 为什么不用 AMap.Geolocation 插件：那个插件自己调浏览器定位、自己转坐标，
+ * 而「我的位置」还要同时驱动附近站点列表 —— 两套定位会拿到两份不完全相同的
+ * 坐标，地图上的点和列表的距离对不上。所以定位统一在 service 层做一次，
+ * 这里只负责把它画出来。
+ */
+const clearLocateOverlays = () => {
+  locateOverlays.forEach((o) => {
+    try {
+      o.setMap(null)
+    } catch {
+      map?.remove?.(o)
+    }
+  })
+  locateOverlays = []
+}
+
+const handleLocate = (position: CurrentPosition) => {
+  const { longitude, latitude } = position.location
+  // 记下来：地图可能还没就绪，initMap 完成时会补画
+  lastLocatedPosition = position
+  if (!map) return
+
+  // 定位是「我要看我在哪」：上一次点站点留下的标记/信息窗留着会和新圆点抢注意力
+  stationOverlays.forEach((o) => {
+    try {
+      o.setMap(null)
+    } catch {
+      map?.remove?.(o)
+    }
+  })
+  stationOverlays = []
+  try {
+    stationWindow?.setMap(null)
+  } catch {
+    /* 窗口可能已经随地图销毁，忽略 */
+  }
+  stationWindow = null
+
+  clearLocateOverlays()
+  const AMapGlobal = (window as unknown as { AMap?: any }).AMap
+  if (!AMapGlobal) return
+
+  const marker = new AMapGlobal.Marker({
+    position: [longitude, latitude],
+    anchor: 'center',
+    zIndex: 320,
+    content: '<span class="locate-dot" aria-hidden="true"></span>',
+  })
+  map.add(marker)
+  locateOverlays.push(marker)
+
+  // 精度圈只在浏览器给出可信精度时画；IP 定位动辄几千米，画出来是个糊住半张图的圆
+  if (position.accuracy > 0 && position.accuracy <= 2000) {
+    const circle = new AMapGlobal.Circle({
+      center: [longitude, latitude],
+      radius: position.accuracy,
+      strokeColor: '#1677ff',
+      strokeOpacity: 0.35,
+      strokeWeight: 1,
+      fillColor: '#1677ff',
+      fillOpacity: 0.12,
+      zIndex: 310,
+    })
+    map.add(circle)
+    locateOverlays.push(circle)
+  }
+
+  map.setZoomAndCenter(15, [longitude, latitude], false, 300)
+}
+
+const buildStationBubble = (station: StationView): string => {  const typeLabel = station.type === 'subway' ? t('result.station.subway') : t('result.station.bus')
   return `
     <div class="station-bubble">
       <span class="station-bubble__tag">${typeLabel}</span>
@@ -3454,6 +3536,9 @@ const initMap = async (notify = false) => {
     await addAttractionMarkers(AMap)
 
     mapStatus.value = 'ready'
+    // 定位先于地图就绪时（用户在高德还在加载就点了「我的位置」），
+    // 把已经拿到的坐标补画上去，否则圆点会一直缺到下次定位
+    if (lastLocatedPosition) handleLocate(lastLocatedPosition)
     if (notify) feedback.success(t('result.messages.mapLoaded'))
   } catch (error) {
     console.error('地图加载失败:', error)
@@ -5607,6 +5692,17 @@ const drawRoutes = async (
 .station-bubble__meta {
   font-size: var(--fs-xs);
   color: var(--tripstar-map-text-sub);
+}
+
+/* 「我的位置」圆点（高德 Marker content，非 scoped） */
+.locate-dot {
+  display: block;
+  width: 16px;
+  height: 16px;
+  border-radius: var(--r-full);
+  background: #1677ff;
+  border: 2px solid #fff;
+  box-shadow: 0 0 0 1px rgba(22, 119, 255, 0.4), 0 2px 6px rgba(0, 0, 0, 0.25);
 }
 
 .tripstar-map-marker__core {

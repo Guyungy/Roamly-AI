@@ -124,6 +124,38 @@
       "generateSuccess": "Trip plan generated successfully!",
       "generateFailed": "Generation failed",
       "generateRetry": "Failed to generate trip plan, please try again later"
+    },
+    "explore": {
+      "title": "Explore Your City",
+      "subtitle": "Browse what is worth seeing in this city, by category",
+      "locateAction": "Locate my city",
+      "locating": "Locating…",
+      "retry": "Retry",
+      "kind": {
+        "spot": "Sights",
+        "food": "Food",
+        "park": "Parks",
+        "museum": "Museums"
+      },
+      "loading": "Searching the city…",
+      "empty": "Nothing to recommend in this category for this city yet",
+      "loadFailed": "Failed to load city exploration, please try again later",
+      "degradedEmpty": "Backend degraded — city exploration is unavailable right now",
+      "fromCache": "Network issue — showing the last cached city exploration result",
+      "fromDegraded": "Backend degraded (upstream location service unavailable) — no places shown",
+      "fromMock": "Showing built-in demo places (backend unreachable or upstream unavailable)",
+      "cityUnknown": "City not determined yet",
+      "cityHint": "City comes from your trip destination, or tap \"Locate my city\"",
+      "distance": "{km} km from city center",
+      "unknownDistance": "Distance unknown",
+      "navAction": "Navigate",
+      "locate": {
+        "unsupported": "This browser does not support geolocation; use the trip city instead",
+        "insecure": "Geolocation requires HTTPS or localhost; this page cannot access your location",
+        "denied": "Location permission denied. Allow it in the site settings and retry",
+        "unavailable": "Location unavailable right now; use the trip city instead",
+        "timeout": "Location timed out; retry or use the trip city instead"
+      }
     }
   },
   "result": {
@@ -312,7 +344,20 @@
       "fromDegraded": "Backend degraded (map provider unavailable) — no stations shown",
       "degradedEmpty": "Backend degraded — stations are unavailable right now",
       "fromMock": "Showing built-in demo stations (backend or map provider unavailable)",
-      "focus": "Focused the map on this station"
+      "focus": "Focused the map on this station",
+      "locateAction": "Use my location",
+      "locating": "Locating…",
+      "currentLocation": "My location",
+      "currentLocationNamed": "My location · {place}",
+      "accuracyMedium": "Location is accurate to roughly a hundred metres — nearby stations may be off",
+      "accuracyLow": "This is a coarse location (accuracy may be several kilometres) — nearby stations are indicative only",
+      "locate": {
+        "unsupported": "This browser does not support geolocation — pick a stop from your itinerary instead",
+        "insecure": "Geolocation needs HTTPS or localhost; this page cannot read your position",
+        "denied": "Location permission was denied — allow it in the browser's site settings and try again",
+        "unavailable": "Your position is unavailable right now — pick a stop from your itinerary instead",
+        "timeout": "Locating timed out — try again or pick a stop from your itinerary"
+      }
     },
     "nav": {
       "label": "Navigate",

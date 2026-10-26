@@ -166,3 +166,82 @@ def test_live_nearby_cache_reduces_upstream_calls():
     first = client.get("/api/map/nearby-station", params=params).json()
     second = client.get("/api/map/nearby-station", params=params).json()
     assert first == second
+
+
+# ============ 城市探索（契约 §5）============
+
+def test_city_explore_rejects_unknown_kind():
+    """未知类别是入参错误 → 422（FastAPI 层拦截），不是降级"""
+    r = client.get("/api/map/city-explore", params={"kind": "nightlife", "city": "杭州"})
+    assert r.status_code == 422
+
+
+def test_city_explore_rejects_bad_coord():
+    r = client.get(
+        "/api/map/city-explore",
+        params={"kind": "spot", "longitude": 116.3, "latitude": 999},
+    )
+    assert r.status_code == 422
+
+
+@pytest.mark.skipif(HAS_KEY, reason="有 Key 时走真实上游，不测降级")
+def test_city_explore_degrades_without_key():
+    r = client.get("/api/map/city-explore", params={"kind": "spot", "city": "杭州"})
+    assert r.status_code == 200
+    body = r.json()
+    assert body["degraded"] is True
+    assert body["data"] == []
+    assert body["city"] is None
+
+
+@pytest.mark.skipif(not HAS_KEY, reason="需要 TENCENT_MAP_KEY 环境变量")
+def test_live_city_explore_returns_ranked_spots():
+    r = client.get(
+        "/api/map/city-explore", params={"kind": "spot", "city": "杭州", "limit": 10}
+    )
+    assert r.status_code == 200
+    body = r.json()
+    assert body["degraded"] is False
+    assert body["city"]["name"] == "杭州市"
+    assert isinstance(body["data"], list) and len(body["data"]) == 10
+
+    for spot in body["data"]:
+        assert spot["id"] and spot["name"]
+        assert spot["kind"] == "spot"
+        assert spot["location"]["longitude"] > 100
+        assert spot["location"]["latitude"] > 0
+        assert isinstance(spot["distance"], int) and spot["distance"] > 0
+
+    scores = [s["score"] for s in body["data"]]
+    assert scores == sorted(scores, reverse=True), "必须按推荐分降序"
+
+    names = " ".join(s["name"] for s in body["data"])
+    assert "服务中心" not in names and "停车场" not in names
+
+
+@pytest.mark.skipif(not HAS_KEY, reason="需要 TENCENT_MAP_KEY 环境变量")
+def test_live_city_explore_accepts_coordinates():
+    """给坐标时应反查城市名，但检索原点取城市中心（不是用户坐标）"""
+    r = client.get(
+        "/api/map/city-explore",
+        params={
+            "kind": "spot",
+            "longitude": 120.155070,
+            "latitude": 30.274085,
+            "limit": 5,
+        },
+    )
+    assert r.status_code == 200
+    body = r.json()
+    assert body["degraded"] is False
+    assert body["city"]["name"] == "杭州市"
+    assert len(body["data"]) == 5
+
+
+@pytest.mark.skipif(not HAS_KEY, reason="需要 TENCENT_MAP_KEY 环境变量")
+def test_live_city_explore_cache_reduces_upstream_calls():
+    """同城市同类别 5 分钟内应命中缓存（城市级检索一次要打多个关键词）"""
+    params = {"kind": "museum", "city": "成都", "limit": 5}
+    first = client.get("/api/map/city-explore", params=params).json()
+    second = client.get("/api/map/city-explore", params=params).json()
+    assert first == second

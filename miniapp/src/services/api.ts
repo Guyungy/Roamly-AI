@@ -204,11 +204,13 @@ export interface StationView extends NearbyStation {
   walkable: boolean
 }
 
-export type StationSource = 'live' | 'cache' | 'mock'
+export type StationSource = 'live' | 'cache' | 'degraded' | 'mock'
 
 export interface StationResult {
   stations: StationView[]
   source: StationSource
+  /** source=degraded 时后端给出的降级原因，直接展示给用户 */
+  degradedReason?: string
 }
 
 const WALKABLE_THRESHOLD_M = 800
@@ -309,6 +311,10 @@ const cacheWrite = (lng: number, lat: number, list: NearbyStation[]) => {
 /**
  * 拉取中心点附近的站点列表。
  * 优先走真实后端 /api/map/nearby-station；失败/未配置时读本地缓存，再不行回退内置 mock。
+ *
+ * 与 Web 端 `services/nearbyStation.ts` 同一套四态语义（live / cache / degraded / mock）：
+ * `degraded` 是后端明确说「上游不可用」，此时 data=[] 不代表「附近真没有」，
+ * 所以既不拿缓存冒充本次结果，也不给 mock 假站点，只如实透出降级原因。
  */
 export async function fetchNearbyStations(
   longitude: number,
@@ -323,15 +329,173 @@ export async function fetchNearbyStations(
     const res = await request<{ success: boolean; degraded?: boolean; message?: string; data: NearbyStation[] }>({
       url: `/api/map/nearby-station?${params}`,
     })
-    // 降级（Key 缺失/上游失败）时 data=[] 是「没取到」，不是「附近没有」，
-    // 交给下面的缓存/mock 兜底；真·空结果则如实返回空列表，不伪造站点。
-    if (res?.degraded) throw new Error(res.message || 'degraded')
+    // 降级（Key 缺失/上游失败）时 data=[] 是「没取到」，不是「附近没有」。
+    // 缓存是上一次的事实、mock 是编的，两者都不能当作本次结果，所以这里直接
+    // 返回 degraded + 空列表，由 UI 如实说明原因（契约 §2「绝不伪造站点」）。
+    if (res?.degraded) {
+      return { stations: [], source: 'degraded', degradedReason: res.message || '' }
+    }
     const list = normalizeList(res)
     if (list.length > 0) cacheWrite(longitude, latitude, list)
     return { stations: list.map(toStationView), source: 'live' }
   } catch {
+    // 网络/5xx/解析失败：这才是「拿不到响应」，可以走缓存 → mock
     const cached = cacheRead(longitude, latitude)
     if (cached && cached.length) return { stations: cached, source: 'cache' }
     return { stations: mockStations(longitude, latitude).map(toStationView), source: 'mock' }
+  }
+}
+
+// ============ 城市探索（契约 §5，带降级兜底） ============
+
+/**
+ * 探索类别。与后端 §5 的 kind 取值一一对应，改一处要同步改另一处。
+ */
+export type ExploreKind = 'spot' | 'food' | 'park' | 'museum'
+
+export interface CitySpot {
+  id: string
+  name: string
+  /** 上游 category，如「旅游景点:国家级景点」 */
+  category: string
+  kind: ExploreKind
+  address: string
+  location: { longitude: number; latitude: number }
+  /** 与城市中心的直线距离（米），后端按城市中心算，不是用户位置 */
+  distance: number
+  score: number
+}
+
+export interface CityCenter {
+  name: string
+  location: { longitude: number; latitude: number }
+}
+
+/**
+ * 与 Web 端 `services/cityExplore.ts` 同一套四态语义（live / cache / degraded / mock）：
+ * `degraded` 是后端明确说「上游不可用或城市解析不了」，此时 data=[] 不代表
+ * 「这城市真没地方」，所以既不拿缓存冒充本次结果，也不给 mock 假地点。
+ */
+export type CityExploreSource = 'live' | 'cache' | 'degraded' | 'mock'
+
+export interface CityExploreResult {
+  spots: CitySpot[]
+  source: CityExploreSource
+  city: CityCenter | null
+  /** source=degraded 时后端给出的原因，直接展示给用户 */
+  degradedReason?: string
+}
+
+const CITY_CACHE_PREFIX = 'chumenla:city-explore:'
+const CITY_CACHE_TTL_MS = 30 * 60 * 1000
+
+const cityCacheKey = (city: string, kind: ExploreKind) => `${CITY_CACHE_PREFIX}${city}|${kind}`
+
+const cityCacheRead = (city: string, kind: ExploreKind): CitySpot[] | null => {
+  try {
+    const raw = uni.getStorageSync(cityCacheKey(city, kind))
+    if (!raw) return null
+    const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw
+    if (Date.now() - (parsed?.at || 0) > CITY_CACHE_TTL_MS) return null
+    if (!Array.isArray(parsed?.list) || parsed.list.length === 0) return null
+    return parsed.list as CitySpot[]
+  } catch {
+    return null
+  }
+}
+
+const cityCacheWrite = (city: string, kind: ExploreKind, list: CitySpot[]) => {
+  if (list.length === 0) return
+  try {
+    uni.setStorageSync(cityCacheKey(city, kind), JSON.stringify({ at: Date.now(), list }))
+  } catch {
+    /* 存不下就静默放弃 */
+  }
+}
+
+/** 城市中心未知时 mock 没有可挂靠的坐标，这里只作为「后端未接通」的占位说明 */
+const mockCitySpots = (city: string, kind: ExploreKind): CitySpot[] => {
+  const pools: Record<ExploreKind, string[]> = {
+    spot: ['老城历史街区', '城市观景台', '滨江步道', '古寺禅院', '艺术中心'],
+    food: ['本地菜老字号', '街角面馆', '夜市小吃街', '江畔餐厅', '老牌茶馆'],
+    park: ['中央公园', '滨河绿道', '植物园', '湿地公园', '山顶公园'],
+    museum: ['市博物馆', '美术馆', '科技馆', '民俗馆', '纪念馆'],
+  }
+  const seed = Math.abs(
+    Array.from(city).reduce((acc, ch) => acc + ch.charCodeAt(0), 0) + kind.length * 977
+  )
+  const rand = (i: number) => ((seed * 31 + i * 137) % 997) / 997
+  return pools[kind].map((name, index) => {
+    const distance = Math.round(600 + index * 1400 + rand(index) * 900)
+    const offsetDeg = (distance / 111000) * (index % 2 === 0 ? 1 : -1) * (0.5 + rand(index))
+    return {
+      id: `mock-${kind}-${index}`,
+      name,
+      category: '演示数据',
+      kind,
+      address: '演示数据 · 城市探索',
+      location: { longitude: 116.397428 + offsetDeg, latitude: 39.90923 + offsetDeg * 0.7 },
+      distance,
+      score: 100 - index * 10,
+    }
+  })
+}
+
+/**
+ * 拉取某座城市的探索列表（契约 §5）。
+ *
+ * 优先级：城市名 > 坐标（后端据此解析城市中心）。
+ * 城市名未知时（只给了坐标）失败也不给 mock —— 没有城市名就没有可标注的归属，
+ * 编地点等于骗用户。
+ */
+export async function fetchCityExplore(options: {
+  city?: string
+  center?: { longitude: number; latitude: number }
+  kind?: ExploreKind
+  limit?: number
+}): Promise<CityExploreResult> {
+  const kind = options.kind || 'spot'
+  const limit = options.limit || 12
+  const cityName = (options.city || '').trim()
+
+  const params: string[] = [`kind=${kind}`, `limit=${limit}`]
+  if (cityName) params.push(`city=${encodeURIComponent(cityName)}`)
+  if (options.center) {
+    // 契约 §1.1：两个 float，不拼 "lat,lng" 单串
+    params.push(`longitude=${options.center.longitude.toFixed(6)}`)
+    params.push(`latitude=${options.center.latitude.toFixed(6)}`)
+  }
+
+  try {
+    const res = await request<{
+      success: boolean
+      degraded?: boolean
+      message?: string
+      city?: CityCenter | null
+      data?: CitySpot[]
+    }>({ url: `/api/map/city-explore?${params.join('&')}` })
+
+    // 降级时 data=[] 是「没取到」，不是「这城市没有」—— 与附近站点同一原则
+    if (res?.degraded) {
+      return { spots: [], source: 'degraded', city: null, degradedReason: res.message || '' }
+    }
+
+    const list = (Array.isArray(res?.data) ? res.data : []).filter(
+      (s) =>
+        s &&
+        s.name &&
+        typeof s.location?.longitude === 'number' &&
+        typeof s.location?.latitude === 'number'
+    )
+    if (cityName && list.length > 0) cityCacheWrite(cityName, kind, list)
+    return { spots: list, source: 'live', city: res?.city || null }
+  } catch {
+    // 网络/5xx/解析失败：这才是「拿不到响应」，可以走缓存 → mock
+    if (cityName) {
+      const cached = cityCacheRead(cityName, kind)
+      if (cached && cached.length) return { spots: cached, source: 'cache', city: null }
+      return { spots: mockCitySpots(cityName, kind), source: 'mock', city: null }
+    }
+    return { spots: [], source: 'degraded', city: null, degradedReason: '' }
   }
 }

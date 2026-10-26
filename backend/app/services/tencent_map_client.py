@@ -15,6 +15,8 @@ import httpx
 
 from ..config import get_settings
 from ..models.schemas import (
+    CityCenter,
+    CityExploreResponse,
     Location,
     NavLink,
     NearbyStationResponse,
@@ -47,6 +49,14 @@ async def _throttle() -> None:
 
 
 _nearby_cache: Dict[Tuple[float, float, int, str], Tuple[float, NearbyStationResponse]] = {}
+
+# 城市探索缓存：同一 (城市, 类别) 5 分钟内复用。
+# 城市级检索一次要打 2 个关键词，而这是「打开首页就会触发」的接口，
+# 不缓存的话日 PV 11000 会被一个人反复切类别就吃光。
+CITY_EXPLORE_CACHE_TTL = 300.0
+# 缓存里存多少条：够覆盖接口 limit 上限（50）即可，避免「先要 5 条再要 50 条」时拿不全
+CITY_EXPLORE_CACHE_SIZE = 50
+_city_cache: Dict[Tuple[str, str], Tuple[float, CityExploreResponse]] = {}
 
 
 class TencentMapService:
@@ -182,6 +192,124 @@ class TencentMapService:
                 mode, destination, to_location, referer=self.referer
             ),
         )
+
+    async def city_explore(
+        self,
+        kind: str,
+        city: Optional[str] = None,
+        longitude: Optional[float] = None,
+        latitude: Optional[float] = None,
+        limit: int = 20,
+    ) -> CityExploreResponse:
+        """当前城市探索（契约 §5）
+
+        检索原点二选一：
+          - 给了坐标（前端刚定过位）→ 用它反查城市名，原点仍取**城市中心**而不是
+            用户坐标。取用户坐标会让「城市探索」退化成「附近有什么」，
+            而 §2 已经负责附近了；这里要的是整座城市的去处。
+          - 没给坐标 → 直接用 city 名查中心。
+
+        城市名解析失败（reliability 不足）时降级，**不猜一个城市**：
+        拿错城市检索出来的景点列表看起来完全正常，用户不会察觉。
+        """
+        if not self.configured:
+            return adapter.degraded_city_explore(
+                "腾讯位置服务 Key 未配置，请在 .env 设置 TENCENT_MAP_KEY"
+            )
+
+        if kind not in adapter.CITY_EXPLORE_KEYWORDS:
+            raise adapter.TencentError(
+                adapter.STATUS_BAD_PARAM,
+                f"未知类别 {kind}，可选：{', '.join(adapter.CITY_EXPLORE_KINDS)}",
+            )
+
+        try:
+            center = await self._resolve_city(city, longitude, latitude)
+        except (httpx.HTTPError, ValueError) as e:
+            return adapter.degraded_city_explore(f"城市解析失败，已降级: {e}")
+        except adapter.TencentError as e:
+            if e.is_bad_param:
+                raise
+            return adapter.degraded_city_explore(f"城市解析失败，已降级: {e.message}")
+
+        if center is None:
+            return adapter.degraded_city_explore(
+                f"无法解析城市「{city or '当前位置'}」，请检查城市名或稍后重试"
+            )
+
+        # 缓存键只含 (城市, 类别)：limit 是**展示条数**，不该影响要不要打上游。
+        # 缓存里存全量，按本次 limit 切片 —— 否则先请求 10 条再请求 5 条会拿到 10 条。
+        cache_key = (center.name, kind)
+        cached = _city_cache.get(cache_key)
+        if cached and time.monotonic() - cached[0] < CITY_EXPLORE_CACHE_TTL:
+            return cached[1].model_copy(update={"data": cached[1].data[:limit]})
+
+        payloads: List[Dict[str, Any]] = []
+        for keyword in adapter.CITY_EXPLORE_KEYWORDS[kind]:
+            try:
+                payloads.append(
+                    await self._get(
+                        "/place/v1/search",
+                        {
+                            "keyword": keyword,
+                            "boundary": f"region({center.name},0)",
+                            "page_size": adapter.PLACE_PAGE_SIZE_MAX,
+                        },
+                    )
+                )
+            except (httpx.HTTPError, ValueError) as e:
+                return adapter.degraded_city_explore(f"腾讯位置服务请求失败，已降级: {e}")
+            except adapter.TencentError as e:
+                if e.is_bad_param:
+                    raise
+                return adapter.degraded_city_explore(
+                    f"腾讯位置服务返回错误，已降级: {e.message}"
+                )
+
+        try:
+            # 缓存里一律存上限条数，展示时再切
+            spots = adapter.merge_city_spots(
+                payloads, kind, center.location, max(limit, CITY_EXPLORE_CACHE_SIZE)
+            )
+        except adapter.TencentError as e:
+            if e.is_bad_param:
+                raise
+            return adapter.degraded_city_explore(
+                f"腾讯位置服务返回错误，已降级: {e.message}"
+            )
+
+        result = CityExploreResponse(
+            success=True, degraded=False, message="", city=center, data=spots
+        )
+        _city_cache[cache_key] = (time.monotonic(), result)
+        return result.model_copy(update={"data": result.data[:limit]})
+
+    async def _resolve_city(
+        self,
+        city: Optional[str],
+        longitude: Optional[float],
+        latitude: Optional[float],
+    ) -> Optional[CityCenter]:
+        """城市名 / 坐标 → 城市中心（契约 §5）
+
+        城市名优先：它已经是「哪座城市」的答案，再拿坐标反查一遍只是多打一次
+        上游，还可能反查到与城市名不一致的结果（小程序两个都传）。
+        只有没给城市名时才用坐标反查，且**反查完还要再查一次城市中心** ——
+        逆地理编码响应里的 `result.location` 就是传入坐标本身，直接拿来当原点
+        会让「城市探索」变成「附近有什么」，还会让同城所有用户共用第一个
+        请求者的 distance/score（缓存键只有 (城市, 类别)）。
+        """
+        name = (city or "").strip()
+        if not name and longitude is not None and latitude is not None:
+            reverse = await self._get(
+                "/geocoder/v1/", {"location": f"{latitude},{longitude}"}
+            )
+            name = (adapter.parse_reverse_city_name(reverse) or "").strip()
+
+        if not name:
+            return None
+        payload = await self._get("/geocoder/v1/", {"address": name})
+        return adapter.parse_city_center(payload)
 
     async def geocode(self, address: str, city: Optional[str] = None) -> Optional[Location]:
         """地址 → 坐标（收编 poll-160 的 geocode 能力）"""
